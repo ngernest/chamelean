@@ -3,6 +3,7 @@ import Plausible.Chamelean.DeriveChecker
 import Plausible.Chamelean.EnumeratorCombinators
 import Test.DeriveDecOpt.DeriveBSTChecker
 import Test.DeriveEnumSuchThat.DeriveSTLCEnumerator
+import Plausible.Chamelean.Examples.ExampleInductiveRelations
 
 open DecOpt
 

@@ -62,69 +62,59 @@ instance : EnumSizedSuchThat type (fun τ => typing Γ e τ) where
 
 /-- A handwritten checker which checks `typing Γ e τ`, ignoring the case for `App`
     (based on the auto-derived checker produced by QuickChick) -/
-def checkTyping (Γ : List type) (e : term) (τ : type) : Nat → Option Bool :=
-  let rec aux_arb (initSize : Nat) (size : Nat) (Γ : List type) (e : term) (τ : type) : Option Bool :=
-    match size with
-    | .zero =>
-      DecOpt.checkerBacktrack [
-        fun _ =>
-          match e with
-          | .Var x => DecOpt.andOptList [DecOpt.decOpt (lookup Γ x τ) initSize]
-          | _ => some false,
-        fun _ =>
-          match τ with
-          | .Nat =>
-            match e with
-            | .Const _ => some true
-            | _ => some false
-          | .Fun _ _ => some false,
-        fun _ => none
-      ]
-    | .succ size' =>
-      DecOpt.checkerBacktrack [
-        fun _ =>
-          match e with
-          | .Var x => DecOpt.andOptList [DecOpt.decOpt (lookup Γ x τ) initSize]
-          | _ => some false,
-        fun _ =>
-          match τ with
-          | .Nat =>
-            match e with
-            | .Add e1 e2 =>
-              DecOpt.andOptList [
-                aux_arb initSize size' Γ e1 .Nat,
-                aux_arb initSize size' Γ e2 .Nat
-              ]
-            | _ => some false
-          | _ => none,
-        fun _ =>
-          match τ with
-          | .Nat =>
-            match e with
-            | .Const _ => some true
-            | _ => some false
-          | .Fun _ _ => some false,
-        fun _ =>
-          match τ with
-          | .Nat => some false
-          | .Fun unkn_17_ τ2 =>
-            match e with
-            | .Abs τ1 e =>
-              DecOpt.andOptList [
-                  DecOpt.decOpt (τ1 = unkn_17_) initSize,
-                  aux_arb initSize size' (τ1 :: Γ) e τ2
-              ]
-            | _ => none,
-        fun _ =>
-          match e with
-          | .App (.Abs .Nat e1) e2 =>
-            EnumeratorCombinators.enumeratingOpt
-              (EnumSuchThat.enumST (fun t1 => typing Γ e2 t1))
-              (fun t1 => aux_arb initSize size' Γ e1 (.Fun t1 τ))
-              initSize
-          | _ => some false
-      ]
-  fun size => aux_arb size size Γ e τ
+def checkTyping (Γ_1 : List type) (e_1 : term) (τ_1 : type) : Nat → Option Bool :=
+  let rec aux_dec (initSize : Nat) (size : Nat) (Γ_1 : List type) (e_1 : term) (τ_1 : type) : Option Bool :=
+      match size with
+      | Nat.zero =>
+        DecOpt.checkerBacktrack
+          [fun _ =>
+            match τ_1 with
+            | type.Nat =>
+              match e_1 with
+              | term.Const _ => Option.some Bool.true
+              | _ => Option.some Bool.false
+            | _ => Option.some Bool.false,
+            fun _ =>
+            match e_1 with
+            | term.Var x => DecOpt.decOpt (lookup Γ_1 x τ_1) initSize
+            | _ => Option.some Bool.false]
+      | Nat.succ size' =>
+        DecOpt.checkerBacktrack
+          [fun _ =>
+            match τ_1 with
+            | type.Nat =>
+              match e_1 with
+              | term.Const _ => Option.some Bool.true
+              | _ => Option.some Bool.false
+            | _ => Option.some Bool.false,
+            fun _ =>
+            match e_1 with
+            | term.Var x => DecOpt.decOpt (lookup Γ_1 x τ_1) initSize
+            | _ => Option.some Bool.false,
+            fun _ =>
+            match τ_1 with
+            | type.Nat =>
+              match e_1 with
+              | term.Add e1 e2 =>
+                DecOpt.andOptList [aux_dec initSize size' Γ_1 e1 (type.Nat), aux_dec initSize size' Γ_1 e2 (type.Nat)]
+              | _ => Option.some Bool.false
+            | _ => Option.some Bool.false,
+            fun _ =>
+            match τ_1 with
+            | type.Fun u_3 τ2 =>
+              match e_1 with
+              | term.Abs τ1 e =>
+                DecOpt.andOptList
+                  [DecOpt.decOpt (BEq.beq u_3 τ1) initSize, aux_dec initSize size' (List.cons τ1 Γ_1) e τ2]
+              | _ => Option.some Bool.false
+            | _ => Option.some Bool.false,
+            fun _ =>
+            match e_1 with
+            | term.App e1 e2 =>
+              EnumeratorCombinators.enumeratingOpt (EnumSizedSuchThat.enumSizedST (fun τ1 => typing Γ_1 e2 τ1) initSize)
+                (fun τ1 => aux_dec initSize size' Γ_1 e1 (type.Fun τ1 τ_1)) initSize
+            | _ => Option.some Bool.false]
+    fun size => aux_dec size size Γ_1 e_1 τ_1
 
 /-- `typing Γ e τ` is an instance of the `DecOpt` typeclass which describes
      partially decidable propositions -/
