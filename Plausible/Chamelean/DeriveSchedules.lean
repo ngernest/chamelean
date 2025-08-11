@@ -56,10 +56,7 @@ def isRecCall (binding : List Name) (hyp : HypothesisExpr) (recCall : Name × Li
     else pure none) args
   let (inductiveName, recCallOutputIdxes) := recCall
 
-  let result := (ctorName == inductiveName && (recCallOutputIdxes.mergeSort) == (outputPositions.mergeSort))
-  logWarning m!"isRecCall: recCallOutputIdxes = {recCallOutputIdxes}, outputPositions = {outputPositions}"
-
-  return result
+  return (ctorName == inductiveName && (recCallOutputIdxes.mergeSort) == (outputPositions.mergeSort))
 
 
 /-- Given a list of `hypotheses`, creates an association list mapping each hypothesis to a list of variable names.
@@ -339,7 +336,6 @@ partial def dfs (boundVars : List Name) (remainingVars : List Name) (checkedHypo
 
           let constrainingRelation ←
             if (← isRecCall outputVars hyp env.recCall) then
-              logWarning m!"constrained prop path: isRecCall is true, outputVars = {outputVars}, hyp = {hyp}, recCall = {env.recCall}"
               let inputArgs := filterWithIndex (fun i _ => i ∉ (Prod.snd env.recCall)) hypArgs
               pure (Source.Rec recursiveFunctionName inputArgs)
             else
