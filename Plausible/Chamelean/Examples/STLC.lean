@@ -5,6 +5,8 @@ import Plausible.Chamelean.ArbitrarySizedSuchThat
 import Plausible.Chamelean.GeneratorCombinators
 import Plausible.Chamelean.Enumerators
 import Plausible.Chamelean.EnumeratorCombinators
+import Plausible.Chamelean.DeriveArbitrary
+import Plausible.Chamelean.DeriveEnum
 
 import Plausible.Gen
 import Plausible.Sampleable
@@ -14,9 +16,14 @@ open OptionTGen
 open GeneratorCombinators
 
 -------------------------------------------------------------------------
--- Some example `DecOpt` checkers
+-- Unconstrained generators
 --------------------------------------------------------------------------
 
+deriving instance Arbitrary, Enum for type, term
+
+-------------------------------------------------------------------------
+-- Some example `DecOpt` checkers
+--------------------------------------------------------------------------
 
 /-- A handwritten checker which checks `lookup Γ x τ`
   (modelled after the automatically derived checker produced by QuickChick). -/
@@ -55,15 +62,92 @@ def checkLookup (Γ : List type) (x : Nat) (τ : type) : Nat → Option Bool :=
 instance : DecOpt (lookup Γ x τ) where
   decOpt := checkLookup Γ x τ
 
--- Dummy `EnumSizedSuchThat` instance
--- TODO: implement metaprogramming infrastructure for deriving `EnumSizedSuchThat` instances
-instance : EnumSizedSuchThat type (fun τ => typing Γ e τ) where
-  enumSizedST := fun _ => OptionT.fail
+/-- `EnumSizedSuchThat` instance for enumerating types that satisfy `lookup` -/
+instance : EnumSizedSuchThat type (fun τ_1 => lookup Γ_1 x_1 τ_1) where
+  enumSizedST :=
+    let rec aux_enum (initSize : Nat) (size : Nat) (Γ_1 : List type) (x_1 : Nat) : OptionT Enumerator type :=
+      match size with
+      | Nat.zero =>
+        EnumeratorCombinators.enumerate
+          [match x_1 with
+            | Nat.zero =>
+              match Γ_1 with
+              | List.cons τ _ => return τ
+              | _ => OptionT.fail
+            | _ => OptionT.fail]
+      | Nat.succ size' =>
+        EnumeratorCombinators.enumerate
+          [match x_1 with
+            | Nat.zero =>
+              match Γ_1 with
+              | List.cons τ _ => return τ
+              | _ => OptionT.fail
+            | _ => OptionT.fail,
+            match x_1 with
+            | Nat.succ n =>
+              match Γ_1 with
+              | List.cons _ Γ => do
+                let τ_1 ← aux_enum initSize size' Γ n;
+                return τ_1
+              | _ => OptionT.fail
+            | _ => OptionT.fail]
+    fun size => aux_enum size size Γ_1 x_1
 
-/-- A handwritten checker which checks `typing Γ e τ`, ignoring the case for `App`
-    (based on the auto-derived checker produced by QuickChick) -/
-def checkTyping (Γ_1 : List type) (e_1 : term) (τ_1 : type) : Nat → Option Bool :=
-  let rec aux_dec (initSize : Nat) (size : Nat) (Γ_1 : List type) (e_1 : term) (τ_1 : type) : Option Bool :=
+mutual
+  /-- Enumerates types `τ` such that `typing Γ e τ` holds -/
+  partial def enumTyping (Γ_1 : List type) (e_1 : term) : Nat → OptionT Enumerator type :=
+    let rec aux_enum (initSize : Nat) (size : Nat) (Γ_1 : List type) (e_1 : term) : OptionT Enumerator type :=
+      match size with
+      | Nat.zero =>
+        EnumeratorCombinators.enumerate
+          [match e_1 with
+            | term.Const _ => return type.Nat
+            | _ => OptionT.fail,
+            match e_1 with
+            | term.Var x => do
+              let τ_1 ← EnumSizedSuchThat.enumSizedST (fun τ_1 => lookup Γ_1 x τ_1) initSize;
+              return τ_1
+            | _ => OptionT.fail]
+      | Nat.succ size' =>
+        EnumeratorCombinators.enumerate
+          [match e_1 with
+            | term.Const _ => return type.Nat
+            | _ => OptionT.fail,
+            match e_1 with
+            | term.Var x => do
+              let τ_1 ← EnumSizedSuchThat.enumSizedST (fun τ_1 => lookup Γ_1 x τ_1) initSize;
+              return τ_1
+            | _ => OptionT.fail,
+            match e_1 with
+            | term.Add e1 e2 =>
+              match checkTyping Γ_1 e1 (type.Nat) size' with
+              | Option.some Bool.true =>
+                match checkTyping Γ_1 e2 (type.Nat) size' with
+                | Option.some Bool.true => return type.Nat
+                | _ => OptionT.fail
+              | _ => OptionT.fail
+            | _ => OptionT.fail,
+            match e_1 with
+            | term.Abs τ1 e => do
+              let τ2 ← aux_enum initSize size' (List.cons τ1 Γ_1) e;
+              return type.Fun τ1 τ2
+            | _ => OptionT.fail,
+            match e_1 with
+            | term.App e1 e2 => do
+              let τ1 ← aux_enum initSize size' Γ_1 e2;
+              do
+                let τ_1 ← Enum.enum;
+                match checkTyping Γ_1 e1 (type.Fun τ1 τ_1) size' with
+                  | Option.some Bool.true => return τ_1
+                  | _ => OptionT.fail
+            | _ => OptionT.fail]
+
+    fun size => aux_enum size size Γ_1 e_1
+
+  /-- A handwritten checker which checks `typing Γ e τ`, ignoring the case for `App`
+      (based on the derived checker produced by QuickChick) -/
+  partial def checkTyping (Γ_1 : List type) (e_1 : term) (τ_1 : type) : Nat → Option Bool :=
+    let rec aux_dec (initSize : Nat) (size : Nat) (Γ_1 : List type) (e_1 : term) (τ_1 : type) : Option Bool :=
       match size with
       | Nat.zero =>
         DecOpt.checkerBacktrack
@@ -93,14 +177,6 @@ def checkTyping (Γ_1 : List type) (e_1 : term) (τ_1 : type) : Nat → Option B
             | _ => Option.some Bool.false,
             fun _ =>
             match τ_1 with
-            | type.Nat =>
-              match e_1 with
-              | term.Add e1 e2 =>
-                DecOpt.andOptList [aux_dec initSize size' Γ_1 e1 (type.Nat), aux_dec initSize size' Γ_1 e2 (type.Nat)]
-              | _ => Option.some Bool.false
-            | _ => Option.some Bool.false,
-            fun _ =>
-            match τ_1 with
             | type.Fun u_3 τ2 =>
               match e_1 with
               | term.Abs τ1 e =>
@@ -111,61 +187,13 @@ def checkTyping (Γ_1 : List type) (e_1 : term) (τ_1 : type) : Nat → Option B
             fun _ =>
             match e_1 with
             | term.App e1 e2 =>
-              EnumeratorCombinators.enumeratingOpt (EnumSizedSuchThat.enumSizedST (fun τ1 => typing Γ_1 e2 τ1) initSize)
+              EnumeratorCombinators.enumeratingOpt (enumTyping Γ_1 e2 initSize)
                 (fun τ1 => aux_dec initSize size' Γ_1 e1 (type.Fun τ1 τ_1)) initSize
             | _ => Option.some Bool.false]
-    fun size => aux_dec size size Γ_1 e_1 τ_1
 
-/-- `typing Γ e τ` is an instance of the `DecOpt` typeclass which describes
-     partially decidable propositions -/
-instance : DecOpt (typing Γ e τ) where
-  decOpt := checkTyping Γ e τ
+      fun size => aux_dec size size Γ_1 e_1 τ_1
+end
 
--------------------------------------------------------------------------
--- Unconstrained generators
---------------------------------------------------------------------------
-
-/-- A generator for STLC types, parameterized by its size argument -/
-def genType : Nat → Gen type :=
-  let rec arb_aux (size : Nat) : Gen type :=
-    match size with
-    | 0 => pure .Nat
-    | .succ size' =>
-        GeneratorCombinators.frequency (pure type.Nat)
-          [(1, thunkGen $ fun _ => pure .Nat),
-          (.succ size',
-            thunkGen $ fun _ => do
-              let p0 ← arb_aux size'
-              let p1 ← arb_aux size'
-              pure (.Fun p0 p1))]
-  fun n => arb_aux n
-
-/-- An enumerator for STLC types, parameterized by its size argument -/
-def enumType : Nat → Enumerator type :=
-  let rec enum_aux (size : Nat) : Enumerator type :=
-    match size with
-    | .zero => pure .Nat
-    | .succ size' =>
-      EnumeratorCombinators.oneOfWithDefault (pure .Nat)
-        [
-          pure .Nat,
-          do
-            let p0 ← enum_aux size'
-            let p1 ← enum_aux size'
-            pure (.Fun p0 p1)
-        ]
-  fun n => enum_aux n
-
-instance : Shrinkable type where
-  shrink := fun ty =>
-    match ty with
-    | .Nat => []
-    | .Fun τ1 τ2 => [τ1, τ2]
-
-/-- `SampleableExt` instance for STLC types -/
-instance : SampleableExt type :=
-  SampleableExt.mkSelfContained do
-    genType (← Gen.getSize)
 
 -------------------------------------------------------------------------
 -- Constrained generators
@@ -182,7 +210,6 @@ def genLookup (Γ : List type) (τ : type) : Nat → OptionT Plausible.Gen Nat :
               (fun _ =>
                 match Γ_0 with
                 | [] => OptionT.fail
-                -- TODO: need to rename patterns
                 | τ :: _ =>
                   match DecOpt.decOpt (τ_0 = τ) initSize with
                   | some true => pure 0
@@ -269,7 +296,7 @@ def genTyping (G_ : List type) (t_ : type) : Nat → OptionT Plausible.Gen term 
           (Nat.succ size',
             OptionTGen.thunkGen
               (fun _ => do
-                let t1 ← SampleableExt.interpSample type
+                let t1 ← Arbitrary.arbitrary
                 let e2 ← aux_arb initSize size' G_0 t1
                 let e1 ← aux_arb initSize size' G_0 (type.Fun t1 t_0)
                 return term.App (.Abs .Nat e1) e2))]
@@ -277,5 +304,5 @@ def genTyping (G_ : List type) (t_ : type) : Nat → OptionT Plausible.Gen term 
 
 /- `typing Γ e τ` is an instance of the `ArbitrarySizedSuchThat` typeclass,
     which describes generators for values that satisfy a proposition -/
--- instance : ArbitrarySizedSuchThat term (fun e => typing Γ e τ) where
---   arbitrarySizedST := gen_typing Γ τ
+instance : ArbitrarySizedSuchThat term (fun e => typing Γ e τ) where
+  arbitrarySizedST := genTyping Γ τ

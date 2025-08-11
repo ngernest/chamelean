@@ -4,8 +4,11 @@ import Plausible.Chamelean.DeriveConstrainedProducer
 import Plausible.Chamelean.EnumeratorCombinators
 import Plausible.Chamelean.Examples.ExampleInductiveRelations
 import Test.DeriveEnum.DeriveSTLCTermTypeEnumerators
+import Plausible.Chamelean.Examples.STLC
 
 set_option guard_msgs.diff true
+
+
 
 /--
 info: Try this enumerator: instance : EnumSizedSuchThat Nat (fun x_1 => lookup Γ_1 x_1 τ_1) where
@@ -37,6 +40,14 @@ info: Try this enumerator: instance : EnumSizedSuchThat Nat (fun x_1 => lookup �
 -/
 #guard_msgs(info, drop warning) in
 #derive_enumerator (fun (x : Nat) => lookup Γ x τ)
+
+/-- We need to manually add an instance of the `DecOpt` typeclass since Lean doesn't support
+    mutually recursively typeclass instances currently.
+
+    (The derived checker for `typing Γ e τ` relies on the derived enumerator for `fun τ => typing Γ e τ`,
+    while this enumerator relies on the checker for `typing Γ e τ`.) -/
+instance : DecOpt (typing Γ e τ) where
+  decOpt := checkTyping Γ e τ
 
 /--
 info: Try this enumerator: instance : EnumSizedSuchThat type (fun τ_1 => lookup Γ_1 x_1 τ_1) where
