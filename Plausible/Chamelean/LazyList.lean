@@ -10,10 +10,15 @@ deriving Inhabited
 
 namespace LazyList
 
-/-- Converts a Lazy List to an ordinary list by forcing all the embedded thunks -/
-def toList : LazyList α → List α
-  | .lnil => []
-  | .lcons x xs => x :: xs.get.toList
+/-- Tail-recursive helper for converting `LazyList` to `List`, where `acc` is the list accumulated so far
+    - The accumulation prevents stack overflow when converting large `LazyList`s to regular lists -/
+def toListAux (acc : List α) : LazyList α → List α
+  | .lnil => acc.reverse
+  | .lcons x xs => toListAux (x :: acc) xs.get
+
+/-- Converts a `LazyList` to an ordinary list by forcing all the embedded thunks -/
+def toList (l : LazyList α) : List α :=
+  toListAux [] l
 
 /-- We pretty-print `LazyList`s by converting them to ordinary lists
     (forcing all the thunks) & pretty-printing the resultant list. -/
@@ -29,11 +34,18 @@ def take (n : Nat) (l : LazyList α) : LazyList α :=
     | .lnil => lnil
     | .lcons x xs => .lcons x (take n' xs.get)
 
+/-- Stack-safe append, written using continuation-passing style -/
+def appendCPS (xs : LazyList α) (ys : LazyList α) : LazyList α :=
+  let rec go (current : LazyList α) (cont : LazyList α → LazyList α) : LazyList α :=
+    match current with
+    | .lnil => cont ys
+    | .lcons x xs' =>
+      .lcons x (Thunk.mk $ fun _ => go xs'.get cont)
+  go xs id
+
 /-- Appends two `LazyLists` together -/
 def append (xs : LazyList α) (ys : LazyList α) : LazyList α :=
-  match xs with
-  | .lnil => ys
-  | .lcons x xs' => .lcons x (append xs'.get ys)
+  appendCPS xs ys
 
 /-- `observe tag i` uses `dbg_trace` to emit a trace of the variable
     associated with `tag` -/
@@ -45,7 +57,7 @@ def observe (tag : String) (i : Fin n) : Nat :=
 def mapLazyList (f : α → β) (l : LazyList α) : LazyList β :=
   match l with
   | .lnil => .lnil
-  | .lcons x xs => .lcons (f x) (mapLazyList f xs.get)
+  | .lcons x xs => .lcons (f x) (Thunk.mk $ fun _ => mapLazyList f xs.get)
 
 /-- `Functor` instance for `LazyList` -/
 instance : Functor LazyList where
@@ -59,11 +71,26 @@ def pureLazyList (x : α) : LazyList α :=
 def singleton (x : α) : LazyList α :=
   pureLazyList x
 
+/-- Stack-safe flatten using continuation-passing style -/
+def concatCPS (l : LazyList (LazyList α)) : LazyList α :=
+  go l id
+    where
+      go (current : LazyList (LazyList α)) (cont : LazyList α → LazyList α) : LazyList α :=
+        match current with
+        | .lnil => cont .lnil
+        | .lcons x l' =>
+          appendToResult x (go l'.get cont)
+
+      appendToResult (xs : LazyList α) (ys : LazyList α) : LazyList α :=
+        match xs with
+        | .lnil => ys
+        | .lcons x xs' =>
+          .lcons x (Thunk.mk fun _ => appendToResult xs'.get ys)
+
 /-- Flattens a `LazyList (LazyList α)` into a `LazyList α`  -/
 def concat (l : LazyList (LazyList α)) : LazyList α :=
-  match l with
-  | .lnil => .lnil
-  | .lcons x l' => append x (concat l'.get)
+  concatCPS l
+
 
 /-- Bind for `LazyList`s is just `concatMap` (same as the list monad) -/
 def bindLazyList (l : LazyList α) (f : α → LazyList β) : LazyList β :=
@@ -85,8 +112,10 @@ instance : Alternative LazyList where
 
 /-- Creates a lazy list by repeatedly applying a function `s` to generate a sequence of elements -/
 def lazySeq (s : α → α) (lo : α) (len : Nat) : LazyList α :=
-  match len with
-  | .zero => .lnil
-  | .succ len' => .lcons lo (lazySeq s (s lo) len')
+  let rec go (current : α) (numRemainingElements : Nat) : LazyList α :=
+    match numRemainingElements with
+    | .zero => .lnil
+    | .succ remaining' => .lcons current (Thunk.mk $ fun _ => go (s current) remaining')
+  go lo len
 
 end LazyList
