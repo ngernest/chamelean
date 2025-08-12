@@ -10,11 +10,7 @@ import Plausible.Chamelean.DeriveArbitrary
 import Plausible.Chamelean.TSyntaxCombinators
 import Plausible.Chamelean.Utils
 import Plausible.Chamelean.Debug
-
-import Plausible.Chamelean.Examples.ExampleInductiveRelations
-
 import Plausible.Chamelean.Arbitrary
-import Plausible.Chamelean.Examples.STLC
 
 import Lean.Elab.Command
 import Lean.Meta.Basic

@@ -6,6 +6,7 @@ import Plausible.Chamelean.ArbitrarySizedSuchThat
 import Test.DeriveArbitrary.DeriveSTLCTermTypeGenerators
 import Test.DeriveDecOpt.DeriveSTLCChecker
 import Plausible.Chamelean.DeriveConstrainedProducer
+import Test.CommonDefinitions.STLCDefinitions
 
 open ArbitrarySizedSuchThat OptionTGen
 

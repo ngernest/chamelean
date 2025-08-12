@@ -2,26 +2,11 @@ import Plausible.Arbitrary
 import Plausible.DeriveArbitrary
 import Plausible.Attr
 import Plausible.Testable
+import Test.CommonDefinitions.STLCDefinitions
 
 open Plausible Gen
 
 set_option guard_msgs.diff true
-
-/-- Base types in the Simply-Typed Lambda Calculus (STLC)
-    (either Nat or functions) -/
-inductive type where
-  | Nat : type
-  | Fun : type → type → type
-  deriving BEq, DecidableEq, Repr
-
-/-- Terms in the STLC extended with naturals and addition -/
-inductive term where
-  | Const: Nat → term
-  | Add: term → term → term
-  | Var: Nat → term
-  | App: term → term → term
-  | Abs: type → term → term
-  deriving BEq, Repr
 
 -- Invoke deriving instance handler for the `Arbitrary` typeclass on `type` and `term`
 set_option trace.plausible.deriving.arbitrary true in

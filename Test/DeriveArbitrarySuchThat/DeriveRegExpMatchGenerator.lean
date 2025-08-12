@@ -10,7 +10,7 @@ open ArbitrarySizedSuchThat OptionTGen
 set_option guard_msgs.diff true
 
 /-- `ExpMatch s r` holds if `s` is a string contained in the language defined by `RegExp r`,
-    i.e., it "matches" `r` (a string is represented here as a `List Nat`) -/
+    i.e., it "matches" `r` (a string is represented here as a `NatString`) -/
 inductive ExpMatch : List Nat → RegExp → Prop where
 | MEmpty : ExpMatch [] RegExp.EmptyStr
 | MChar : ∀ x, ExpMatch [x] (RegExp.Char x)
@@ -60,9 +60,9 @@ def r0 : RegExp :=
 -- Generator for strings that match the regexp `re`
 
 /--
-info: Try this generator: instance : ArbitrarySizedSuchThat NatString (fun s_1 => ExpMatch s_1 re_1) where
+info: Try this generator: instance : ArbitrarySizedSuchThat (List Nat) (fun s_1 => ExpMatch s_1 re_1) where
   arbitrarySizedST :=
-    let rec aux_arb (initSize : Nat) (size : Nat) (re_1 : RegExp) : OptionT Plausible.Gen NatString :=
+    let rec aux_arb (initSize : Nat) (size : Nat) (re_1 : RegExp) : OptionT Plausible.Gen (List Nat) :=
       match size with
       | Nat.zero =>
         OptionTGen.backtrack
@@ -123,8 +123,8 @@ info: Try this generator: instance : ArbitrarySizedSuchThat NatString (fun s_1 =
     fun size => aux_arb size size re_1
 -/
 #guard_msgs(info, drop warning) in
-#derive_generator (fun (s : NatString) => ExpMatch s re)
+#derive_generator (fun (s : List Nat) => ExpMatch s re)
 
 -- To sample from this generator and print out 10 successful examples using the `Repr`
--- instance for `NatString`, we can run the following:
+-- instance for `List Nat`, we can run the following:
 -- #eval runSizedGenPrintOutput (arbitrarySizedST (fun s => ExpMatch s r)) 10

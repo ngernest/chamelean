@@ -36,4 +36,3 @@ import Plausible.Chamelean.DeriveConstrainedProducer
 import Plausible.Chamelean.Schedules
 import Plausible.Chamelean.DeriveSchedules
 import Plausible.Chamelean.MExp
-import Plausible.Chamelean.Examples.ExampleInductiveRelations

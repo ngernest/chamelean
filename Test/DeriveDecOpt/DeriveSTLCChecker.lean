@@ -3,46 +3,11 @@ import Plausible.Chamelean.DeriveChecker
 import Plausible.Chamelean.EnumeratorCombinators
 import Test.DeriveDecOpt.DeriveBSTChecker
 import Test.DeriveEnumSuchThat.DeriveSTLCEnumerator
-import Plausible.Chamelean.Examples.ExampleInductiveRelations
+import Test.CommonDefinitions.STLCDefinitions
 
 open DecOpt
 
 set_option guard_msgs.diff true
-
-/--
-info: Try this checker: instance : DecOpt (lookup Γ_1 x_1 τ_1) where
-  decOpt :=
-    let rec aux_dec (initSize : Nat) (size : Nat) (Γ_1 : List type) (x_1 : Nat) (τ_1 : type) : Option Bool :=
-      match size with
-      | Nat.zero =>
-        DecOpt.checkerBacktrack
-          [fun _ =>
-            match x_1 with
-            | Nat.zero =>
-              match Γ_1 with
-              | List.cons τ Γ => DecOpt.decOpt (BEq.beq τ τ_1) initSize
-              | _ => Option.some Bool.false
-            | _ => Option.some Bool.false]
-      | Nat.succ size' =>
-        DecOpt.checkerBacktrack
-          [fun _ =>
-            match x_1 with
-            | Nat.zero =>
-              match Γ_1 with
-              | List.cons τ Γ => DecOpt.decOpt (BEq.beq τ τ_1) initSize
-              | _ => Option.some Bool.false
-            | _ => Option.some Bool.false,
-            fun _ =>
-            match x_1 with
-            | Nat.succ n =>
-              match Γ_1 with
-              | List.cons τ' Γ => aux_dec initSize size' Γ n τ_1
-              | _ => Option.some Bool.false
-            | _ => Option.some Bool.false]
-    fun size => aux_dec size size Γ_1 x_1 τ_1
--/
-#guard_msgs(info, drop warning) in
-#derive_checker (lookup Γ x τ)
 
 /--
 info: Try this checker: instance : DecOpt (typing Γ_1 e_1 τ_1) where
