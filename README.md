@@ -19,10 +19,7 @@ We provide various top-level commands which automatically derive generators for 
 
 **1. Deriving unconstrained generators/enumerators**              
 An *unconstrained* generator produces random inhabitants of an algebraic data type, while an unconstrained enumerator *enumerates* (deterministically) said inhabitants. 
-
-We provide two frontends which derive instances of `Arbitrary` & `ArbitrarySuchThat` (resp. `Enum` & `EnumSuchThat`) respectively: 
-
-**1a. Deriving Instances** (for algebraic data types)              
+          
 Users can write `deriving Arbitrary` and/or `deriving Enum` after an inductive type definition, i.e.
 ```lean 
 inductive Foo where
@@ -37,16 +34,6 @@ inductive Foo where
 ```
 Alternatively, users can also write `deriving instance Arbitrary for T1, ..., Tn` or `deriving instance Enum for T1, ...` as a top-level command to derive `Arbitrary` / `Enum` instances for types `T1, ..., Tn` simultaneously.
 
-**1b. Command Elaborators**            
-We provide command elaborators which elaborate the `#derive_arbitrary` & `#derive_enum` commands respectively: 
-
-```lean
--- `#derive_arbitrary` derives an instance of `Arbitrary` for the `Tree` datatype
-#derive_arbitrary Tree  
-
--- `#derive_enum` derives an instance of `Enum` for the `Tree` datatype
-#derive_enum Tree
-```
 
 To sample from a derived generator, users can simply call `runArbitrary`, specify the type 
 for the desired generated values and provide some `Nat` to act as the generator's size parameter (`10` in the example below):
@@ -107,7 +94,7 @@ We provide a command elaborator which elaborates the `#derive_checker` command:
   + Note that some linter warnings are suppressed in [`scripts/nolints.json`](./scripts/nolints.json).
 
 **Typeclass definitions**:
-- [`Arbitrary.lean`](./Plausible/Chamelean/Arbitrary.lean): The `Arbitrary` & `ArbitrarySized` typeclasses for unconstrained generators, adapted from QuickChick
+- [`Arbitrary.lean`](./Plausible/Arbitrary.lean): The `Arbitrary` & `ArbitrarySized` typeclasses for unconstrained generators, adapted from QuickChick
 - [`ArbitrarySizedSuchThat.lean`](./Plausible/Chamelean/ArbitrarySizedSuchThat.lean): The `ArbitrarySuchThat` & `ArbitrarySizedSuchThat` typeclasses for constrained generators, adapted from QuickChick
 - [`DecOpt.lean`](./Plausible/Chamelean/DecOpt.lean): The `DecOpt` typeclass for partially decidable propositions, adapted from QuickChick
 - [`Enumerators.lean`](./Plausible/Chamelean/Enumerators.lean): The `Enum, EnumSized, EnumSuchThat, EnumSizedSuchThat` typeclasses for constrained & unconstrained enumeration
