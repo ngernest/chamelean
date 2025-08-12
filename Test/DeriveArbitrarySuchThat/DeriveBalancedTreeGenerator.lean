@@ -6,6 +6,7 @@ import Plausible.Chamelean.ArbitrarySizedSuchThat
 import Plausible.Chamelean.DeriveConstrainedProducer
 import Test.CommonDefinitions.BinaryTree
 
+open Plausible
 open ArbitrarySizedSuchThat OptionTGen
 
 set_option guard_msgs.diff true
@@ -50,7 +51,7 @@ info: Try this generator: instance : ArbitrarySizedSuchThat BinaryTree (fun t_1 
                 do
                   let r ← aux_arb initSize size' n;
                   do
-                    let x ← Arbitrary.arbitrary;
+                    let x ← Plausible.Arbitrary.arbitrary;
                     return BinaryTree.Node x l r
               | _ => OptionT.fail)]
     fun size => aux_arb size size n_1

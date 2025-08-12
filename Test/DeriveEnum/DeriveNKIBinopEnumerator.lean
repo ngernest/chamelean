@@ -1,4 +1,4 @@
-import Plausible.Chamelean.Arbitrary
+import Plausible.Arbitrary
 import Plausible.Chamelean.DeriveEnum
 import Plausible.Chamelean.EnumeratorCombinators
 import Test.DeriveArbitrary.DeriveNKIBinopGenerator

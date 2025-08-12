@@ -67,6 +67,10 @@ instance [ArbitraryFueled α] : Arbitrary α where
 instance [SampleableExt α] : Arbitrary α where
   arbitrary := SampleableExt.interp <$> SampleableExt.sample
 
+/-- Every `Arbitrary α` instance gives rise to an `Arbitrary (Option α)` instance -/
+instance [Arbitrary α] : Arbitrary (Option α) where
+  arbitrary := pure <$> Arbitrary.arbitrary
+
 namespace Arbitrary
 
 /-- Samples from the generator associated with the `Arbitrary` instance for a type,

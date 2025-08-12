@@ -5,6 +5,7 @@ import Plausible.Chamelean.ArbitrarySizedSuchThat
 import Plausible.Chamelean.DeriveConstrainedProducer
 import Test.DeriveArbitrary.DeriveRegExpGenerator
 
+open Plausible
 open ArbitrarySizedSuchThat OptionTGen
 
 set_option guard_msgs.diff true

@@ -5,7 +5,8 @@ import Plausible.Chamelean.ArbitrarySizedSuchThat
 import Plausible.Chamelean.GeneratorCombinators
 import Plausible.Chamelean.Enumerators
 import Plausible.Chamelean.EnumeratorCombinators
-import Plausible.Chamelean.DeriveArbitrary
+import Plausible.DeriveArbitrary
+import Plausible.Arbitrary
 import Plausible.Chamelean.DeriveEnum
 
 import Plausible.Gen
