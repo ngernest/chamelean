@@ -218,22 +218,15 @@ def insert (x : Nat) (t : Tree) : Tree :=
       .Node y l (insert x r)
     else t
 
-abbrev OptionTGenIO (α : Type) : Type := OptionT Gen (IO α)
-
-def bstHarness : OptionT Gen (Nat × Tree) := do
-  let size := 10
-  let x ← Subtype.val <$> Gen.chooseNatLt 1 10 (by decide)
-  let t ← ArbitrarySizedSuchThat.arbitrarySizedST (fun t => bst 0 10 t) size
-  return (x, t)
-
 
 def runTests (numTrials : Nat) : IO Unit := do
   let size := 10
   let mut numSucceeded := 0
   for _ in [:numTrials] do
-    let result ← Gen.run bstHarness 10
-    match result with
-    | some (x, t) =>
+    let x ← Gen.run (Subtype.val <$> Gen.chooseNatLt 1 10 (by decide)) size
+    let maybeTree ← Gen.run (ArbitrarySizedSuchThat.arbitrarySizedST (fun t => bst 0 10 t) size) size
+    match maybeTree with
+    | some t =>
       let t' := insert x t
       let b := DecOpt.decOpt (bst 0 10 t') size
       match b with
@@ -251,7 +244,7 @@ def runTests (numTrials : Nat) : IO Unit := do
   IO.println s!"finished {numTrials} tests, {numSucceeded} passed"
 
 
--- #eval runTests 10000
+#eval runTests 10000
 
 
 /-- Handwritten `DecOpt` instance for the proposition `balanced n t` -/
