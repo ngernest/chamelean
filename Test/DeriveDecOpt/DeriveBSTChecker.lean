@@ -1,6 +1,6 @@
 import Plausible.Chamelean.DecOpt
 import Plausible.Chamelean.DeriveChecker
-import Test.DeriveArbitrarySuchThat.DeriveBSTGenerator
+import Test.CommonDefinitions.BinaryTree
 
 open DecOpt
 

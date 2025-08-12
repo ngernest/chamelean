@@ -44,8 +44,8 @@ def genBST (lo : Nat) (hi : Nat) : Nat → OptionT Gen Tree :=
   fun size => aux_arb size size lo hi
 
 /- Instance of the `ArbitrarySizedSuchThat` typeclass for generators of BSTs -/
--- instance : ArbitrarySizedSuchThat Tree (fun t => bst lo hi t) where
---   arbitrarySizedST := genBST lo hi
+instance : ArbitrarySizedSuchThat Tree (fun t => bst lo hi t) where
+  arbitrarySizedST := genBST lo hi
 
 /-- A handwritten generator for balanced trees of height `n`
     (modelled after the automatically derived generator produced by QuickChick) -/
