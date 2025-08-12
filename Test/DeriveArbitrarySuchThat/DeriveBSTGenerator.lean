@@ -5,6 +5,7 @@ import Plausible.Chamelean.DecOpt
 import Plausible.Chamelean.ArbitrarySizedSuchThat
 import Plausible.Chamelean.DeriveConstrainedProducer
 import Test.CommonDefinitions.BinaryTree
+import Test.DeriveDecOpt.DeriveBSTChecker
 import Plausible.Testable
 
 open Plausible
@@ -25,14 +26,7 @@ def shrinkBinaryTree (t : BinaryTree) : List BinaryTree :=
 instance : Shrinkable BinaryTree where
   shrink := shrinkBinaryTree
 
-
 set_option guard_msgs.diff true
-
-/-- `Between lo x hi` means `lo < x < hi` -/
-inductive Between : Nat -> Nat -> Nat -> Prop where
-| BetweenN : ∀ n m, n <= m -> Between n (.succ n) (.succ (.succ m))
-| BetweenS : ∀ n m o,
-  Between n m o -> Between n (.succ m) (.succ o)
 
 /--
 info: Try this generator: instance : ArbitrarySizedSuchThat Nat (fun x_1 => Between lo_1 x_1 hi_1) where
@@ -68,14 +62,6 @@ info: Try this generator: instance : ArbitrarySizedSuchThat Nat (fun x_1 => Betw
 #guard_msgs(info, drop warning) in
 #derive_generator (fun (x : Nat) => Between lo x hi)
 
-/-- `BST lo hi t` describes whether a tree `t` is a BST that contains values strictly within `lo` and `hi` -/
-inductive BST : Nat → Nat → BinaryTree → Prop where
-  | BstLeaf: BST lo hi .Leaf
-  | BstNode: ∀ lo hi x l r,
-    Between lo x hi →
-    BST lo x l →
-    BST x hi r →
-    BST lo hi (.Node x l r)
 
 /--
 info: Try this generator: instance : ArbitrarySizedSuchThat BinaryTree (fun t_1 => BST lo_1 hi_1 t_1) where
@@ -99,4 +85,47 @@ info: Try this generator: instance : ArbitrarySizedSuchThat BinaryTree (fun t_1 
 #derive_generator (fun (t : BinaryTree) => BST lo hi t)
 
 
-  -- (∀ (x : Nat) (lo : Nat) (hi : Nat) (t : BinaryTree), BST lo hi t → BST lo hi (insert x t))
+/-- Inserts an element into a tree, respecting the BST invariants -/
+def insert (x : Nat) (t : BinaryTree) : BinaryTree :=
+  match t with
+  | .Leaf => .Node x .Leaf .Leaf
+  | .Node y l r =>
+    if x < y then
+      .Node y (insert x l) r
+    else if x > y then
+      .Node y l (insert x r)
+    else t
+
+/-- A buggy insertion function which ignores the input tree and
+    returns a two-node tree where both values are `x` -/
+def buggyInsert (x : Nat) (_ : BinaryTree) : BinaryTree :=
+  .Node x (.Node x .Leaf .Leaf) .Leaf
+
+/-- Test harness for testing the property `∀ (x : Nat) (t : Tree), BST 0 10 t → BST 0 10 (insert x t)`.
+
+    To check that the derived generator can be used for catching bugs,
+    set `useBuggyVersion := true` -/
+def runTests (numTrials : Nat) (useBuggyVersion : Bool := false) : IO Unit := do
+  let size := 10
+  let mut numSucceeded := 0
+  for _ in [:numTrials] do
+    let x ← Gen.run (Subtype.val <$> Gen.chooseNatLt 1 10 (by decide)) size
+    let maybeTree ← Gen.run (ArbitrarySizedSuchThat.arbitrarySizedST (fun t => BST 0 10 t) size) size
+    match maybeTree with
+    | some t =>
+      let insertFn := if useBuggyVersion then buggyInsert else insert
+      let t' := insertFn x t
+      let b := DecOpt.decOpt (BST 0 10 t') size
+      match b with
+      | some bool =>
+        if bool then
+          numSucceeded := numSucceeded + 1
+        else
+          IO.println s!"Property falsified!\nt = {repr t}\nx = {x}\nt' = {repr t'}"
+          return
+      | none => IO.println s!"unable to decide BST validity for {repr t'}"
+    | none => IO.println "unable to generate valid BST"
+  IO.println s!"Chamelean: finished {numTrials} tests, {numSucceeded} passed"
+
+-- Uncomment this to run the aforementioned test harness
+-- #eval runTests (numTrials := 100) (useBuggyVersion := true)

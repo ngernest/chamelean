@@ -32,7 +32,6 @@ import Plausible.Chamelean.DeriveConstrainedProducer
 import Plausible.Chamelean.Schedules
 import Plausible.Chamelean.DeriveSchedules
 import Plausible.Chamelean.MExp
-import Plausible.Chamelean.Examples.HowToSpecifyIt
 
 -- Note that `DeriveArbitrary` & `Arbitrary` are in the top-level `Plausible` directory
 -- and not the `Chamelean` subdirectory as a result of the changes

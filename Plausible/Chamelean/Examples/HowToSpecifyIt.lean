@@ -1,8 +1,16 @@
+import Plausible.Chamelean.DeriveConstrainedProducer
+
+open Plausible
+
+
+
+
 -- Binary Search TreeMap implementation in Lean 4
 inductive TreeMap : Type where
   | Leaf : TreeMap
   | Node : TreeMap → Nat → Nat → TreeMap → TreeMap
   deriving Repr
+
 
 -- The operations under test
 def find (key : Nat) : TreeMap → Option Nat
@@ -49,13 +57,6 @@ end
 
 def size (t : TreeMap) : Nat :=
   (keys t).length
-
--- Validation function
-def valid : TreeMap → Bool
-  | TreeMap.Leaf => true
-  | TreeMap.Node l k _v r =>
-    valid l && valid r &&
-    (keys l).all (· < k) && (keys r).all (k < ·)
 
 -- Union and helper functions
 mutual
