@@ -166,8 +166,8 @@ def prodOf {α : Type u} {β : Type v} (x : Gen α) (y : Gen β) : Gen (α × β
 end Gen
 
 /-- Execute a `Gen` inside the `IO` monad using `size` as the example size -/
-def Gen.run {α : Type} (x : Gen α) (size : Nat) : BaseIO α := do
-  letI : MonadLift Id BaseIO := ⟨fun f => pure <| Id.run f⟩
+def Gen.run {α : Type} (x : Gen α) (size : Nat) : IO α := do
+  letI : MonadLift Id IO := ⟨fun f => pure <| Id.run f⟩
   runRand (ReaderT.run x ⟨size⟩:)
 
 end Plausible

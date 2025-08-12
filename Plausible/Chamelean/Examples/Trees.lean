@@ -44,8 +44,8 @@ def genBST (lo : Nat) (hi : Nat) : Nat → OptionT Gen Tree :=
   fun size => aux_arb size size lo hi
 
 /- Instance of the `ArbitrarySizedSuchThat` typeclass for generators of BSTs -/
--- instance : ArbitrarySizedSuchThat Tree (fun t => bst lo hi t) where
---   arbitrarySizedST := genBST lo hi
+instance : ArbitrarySizedSuchThat Tree (fun t => bst lo hi t) where
+  arbitrarySizedST := genBST lo hi
 
 /-- A handwritten generator for balanced trees of height `n`
     (modelled after the automatically derived generator produced by QuickChick) -/
@@ -179,6 +179,80 @@ instance : DecOpt (bst lo hi t) where
               ]
         ]
     fun size => aux_arb size size lo hi t
+
+def checkBST (lo : Nat) (hi : Nat) (t : Tree) : DecOpt (bst lo hi t) :=
+  ⟨ let rec aux_dec (initSize : Nat) (size : Nat) (lo_1 : Nat) (hi_1 : Nat) (t_1 : Tree) : Option Bool :=
+        match size with
+        | Nat.zero =>
+          DecOpt.checkerBacktrack
+            [fun _ =>
+              match t_1 with
+              | Tree.Leaf => Option.some Bool.true
+              | _ => Option.some Bool.false]
+        | Nat.succ size' =>
+          DecOpt.checkerBacktrack
+            [fun _ =>
+              match t_1 with
+              | Tree.Leaf => Option.some Bool.true
+              | _ => Option.some Bool.false,
+              fun _ =>
+              match t_1 with
+              | Tree.Node x l r =>
+                DecOpt.andOptList
+                  [DecOpt.decOpt (between lo_1 x hi_1) initSize,
+                    DecOpt.andOptList [aux_dec initSize size' lo_1 x l, aux_dec initSize size' x hi_1 r]]
+              | _ => Option.some Bool.false]
+      fun size => aux_dec size size lo hi t ⟩
+
+
+
+
+/-- Inserts an element into a tree, respecting the BST invariants -/
+def insert (x : Nat) (t : Tree) : Tree :=
+  match t with
+  | .Leaf => .Node x .Leaf .Leaf
+  | .Node y l r =>
+    if x < y then
+      .Node y (insert x l) r
+    else if x > y then
+      .Node y l (insert x r)
+    else t
+
+abbrev OptionTGenIO (α : Type) : Type := OptionT Gen (IO α)
+
+def bstHarness : OptionT Gen (Nat × Tree) := do
+  let size := 10
+  let x ← Subtype.val <$> Gen.chooseNatLt 1 10 (by decide)
+  let t ← ArbitrarySizedSuchThat.arbitrarySizedST (fun t => bst 0 10 t) size
+  return (x, t)
+
+
+def runTests (numTrials : Nat) : IO Unit := do
+  let size := 10
+  let mut numSucceeded := 0
+  for _ in [:numTrials] do
+    let result ← Gen.run bstHarness 10
+    match result with
+    | some (x, t) =>
+      let t' := insert x t
+      let b := DecOpt.decOpt (bst 0 10 t') size
+      match b with
+      | some bool =>
+        if bool then
+          numSucceeded := numSucceeded + 1
+        else
+          IO.println s!"failed"
+          IO.println s!"t = {repr t}"
+          IO.println s!"x = {x}"
+          IO.println s!"t' = {repr t'}"
+          break
+      | none => continue
+    | none => continue
+  IO.println s!"finished {numTrials} tests, {numSucceeded} passed"
+
+
+-- #eval runTests 10000
+
 
 /-- Handwritten `DecOpt` instance for the proposition `balanced n t` -/
 instance : DecOpt (balanced n t) where
