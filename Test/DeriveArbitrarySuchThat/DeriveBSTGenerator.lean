@@ -11,21 +11,6 @@ import Plausible.Testable
 open Plausible
 open ArbitrarySizedSuchThat OptionTGen
 
-/-- A shrinker for `BinaryTree`, adapted from Penn CIS 5520 lecture notes
-    https://www.seas.upenn.edu/~cis5520/current/lectures/stub/05-quickcheck/QuickCheck.html -/
-def shrinkBinaryTree (t : BinaryTree) : List BinaryTree :=
-    match t with
-    | .Leaf => [] -- empty trees can't be shrunk
-    | .Node x l r =>
-      [.Leaf, l, r]                                         -- left and right trees are smaller
-      ++ (fun l' => .Node x l' r) <$> shrinkBinaryTree l          -- shrink left subtree
-      ++ (fun r' => .Node x l r') <$> shrinkBinaryTree r          -- shrink right tree
-      ++ (fun x' => .Node x' l r) <$> Shrinkable.shrink x   -- shrink the value
-
-/-- `Shrinkable` instance for `BinaryTree` -/
-instance : Shrinkable BinaryTree where
-  shrink := shrinkBinaryTree
-
 set_option guard_msgs.diff true
 
 /--
