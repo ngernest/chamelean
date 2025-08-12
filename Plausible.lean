@@ -24,8 +24,6 @@ import Plausible.Chamelean.ArbitrarySizedSuchThat
 import Plausible.Chamelean.Enumerators
 import Plausible.Chamelean.EnumeratorCombinators
 import Plausible.Chamelean.LazyList
-import Plausible.Chamelean.Examples.STLC
-import Plausible.Chamelean.Examples.Trees
 import Plausible.Chamelean.DeriveEnum
 import Plausible.Chamelean.Utils
 import Plausible.Chamelean.Debug
@@ -34,6 +32,7 @@ import Plausible.Chamelean.DeriveConstrainedProducer
 import Plausible.Chamelean.Schedules
 import Plausible.Chamelean.DeriveSchedules
 import Plausible.Chamelean.MExp
+import Plausible.Chamelean.Examples.HowToSpecifyIt
 
 -- Note that `DeriveArbitrary` & `Arbitrary` are in the top-level `Plausible` directory
 -- and not the `Chamelean` subdirectory as a result of the changes

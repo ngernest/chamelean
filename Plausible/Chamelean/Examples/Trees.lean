@@ -218,6 +218,9 @@ def insert (x : Nat) (t : Tree) : Tree :=
       .Node y l (insert x r)
     else t
 
+def buggyInsert (x : Nat) (_ : Tree) : Tree :=
+  .Node x (.Node x .Leaf .Leaf) .Leaf
+
 
 def runTests (numTrials : Nat) : IO Unit := do
   let size := 10
@@ -227,24 +230,24 @@ def runTests (numTrials : Nat) : IO Unit := do
     let maybeTree ← Gen.run (ArbitrarySizedSuchThat.arbitrarySizedST (fun t => bst 0 10 t) size) size
     match maybeTree with
     | some t =>
-      let t' := insert x t
+      let t' := buggyInsert x t
       let b := DecOpt.decOpt (bst 0 10 t') size
       match b with
       | some bool =>
         if bool then
           numSucceeded := numSucceeded + 1
         else
-          IO.println s!"failed"
+          IO.println s!"Property falsified!"
           IO.println s!"t = {repr t}"
           IO.println s!"x = {x}"
           IO.println s!"t' = {repr t'}"
-          break
-      | none => continue
-    | none => continue
+          return
+      | none => IO.println "unable to decide BST"
+    | none => IO.println "unable to generate BST"
   IO.println s!"finished {numTrials} tests, {numSucceeded} passed"
 
 
-#eval runTests 10000
+-- #eval runTests 10000
 
 
 /-- Handwritten `DecOpt` instance for the proposition `balanced n t` -/
