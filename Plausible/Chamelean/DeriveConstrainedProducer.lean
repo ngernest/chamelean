@@ -605,7 +605,7 @@ def deriveConstrainedProducer (outputVar : Ident) (outputTypeSyntax : TSyntax `t
 
       if (not requiredInstances.isEmpty) then
         let deduplicatedInstances := List.eraseDups requiredInstances.toList
-        logWarning m!"Required typeclass instances (please derive these first if they aren't already defined):\n{deduplicatedInstances}"
+        -- logWarning m!"Required typeclass instances (please derive these first if they aren't already defined):\n{deduplicatedInstances}"
 
       -- Collect all the base / inductive producers into two Lean list terms
       -- Base producers are invoked when `size = 0`, inductive producers are invoked when `size > 0`
@@ -654,7 +654,12 @@ def elabDeriveGenerator : CommandElab := fun stx => do
     let genFormat ← liftCoreM (PrettyPrinter.ppCommand typeClassInstance)
 
     -- Display the code for the derived generator to the user
-    logInfo m!"Try this generator: {Format.pretty genFormat}"
+    -- logInfo m!"Try this generator: {Format.pretty genFormat}"
+
+    -- Display the code for the derived checker to the user
+    -- & prompt the user to accept it in the VS Code side panel
+    liftTermElabM $ Tactic.TryThis.addSuggestion stx
+      (Format.pretty genFormat) (header := "Try this generator: ")
 
     elabCommand typeClassInstance
 
