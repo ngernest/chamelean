@@ -1,6 +1,5 @@
 import Lean.Expr
 import Batteries
-import Plausible.Chamelean.Examples.ExampleInductiveRelations
 import Plausible.Chamelean.Utils
 import Plausible.Chamelean.Schedules
 import Plausible.Chamelean.UnificationMonad

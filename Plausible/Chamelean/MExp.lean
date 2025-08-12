@@ -1,4 +1,4 @@
-import Plausible.Chamelean.Arbitrary
+import Plausible.Arbitrary
 import Plausible.Chamelean.ArbitrarySizedSuchThat
 import Plausible.Chamelean.Enumerators
 import Plausible.Chamelean.DecOpt
@@ -7,6 +7,7 @@ import Plausible.Chamelean.Schedules
 import Plausible.Chamelean.UnificationMonad
 import Plausible.Chamelean.Idents
 
+open Plausible
 open Idents
 open Lean Parser Elab Term Command
 

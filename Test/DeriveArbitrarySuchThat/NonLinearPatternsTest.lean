@@ -6,7 +6,7 @@ import Plausible.Chamelean.ArbitrarySizedSuchThat
 import Plausible.Chamelean.DeriveConstrainedProducer
 import Test.CommonDefinitions.BinaryTree
 
-
+open Plausible
 open ArbitrarySizedSuchThat OptionTGen
 
 set_option guard_msgs.diff true
@@ -55,7 +55,7 @@ info: Try this generator: instance : ArbitrarySizedSuchThat (List Nat) (fun xs_1
           [(1,
               match ys_1 with
               | List.cons x ys => do
-                let xs ← Arbitrary.arbitrary;
+                let xs ← Plausible.Arbitrary.arbitrary;
                 return List.cons x xs
               | _ => OptionT.fail)]
       | Nat.succ size' =>
@@ -63,7 +63,7 @@ info: Try this generator: instance : ArbitrarySizedSuchThat (List Nat) (fun xs_1
           [(1,
               match ys_1 with
               | List.cons x ys => do
-                let xs ← Arbitrary.arbitrary;
+                let xs ← Plausible.Arbitrary.arbitrary;
                 return List.cons x xs
               | _ => OptionT.fail),
             ]

@@ -74,7 +74,6 @@ def termToString (e : term) : String :=
 instance : Repr term where
   reprPrec (e : term) _ := termToString e
 
-
 /-- `lookup Γ n τ` checks whether the `n`th element of the context `Γ` has type `τ` -/
 inductive lookup : List type -> Nat -> type -> Prop where
   | Now : forall τ Γ, lookup (τ :: Γ) .zero τ
@@ -99,11 +98,6 @@ inductive typing: List type → term → type → Prop where
     typing Γ e2 τ1 →
     typing Γ e1 (.Fun τ1 τ2) →
     typing Γ (.App e1 e2) τ2
-
-
-/-- Variant of the `Var` typing rule in which `τ` appears non-linearly -/
-inductive typingAlt : List type → term → type → Prop where
-  | VarNonlinear : ∀ Γ τ, typingAlt (τ :: Γ) (.Var Nat.zero) τ
 
 /-- Non-empty trees (trees that are not just leaves) -/
 inductive nonempty : Tree → Prop where

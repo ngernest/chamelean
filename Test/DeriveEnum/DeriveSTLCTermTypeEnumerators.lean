@@ -1,7 +1,7 @@
 import Plausible.Chamelean.Enumerators
 import Plausible.Chamelean.EnumeratorCombinators
 import Plausible.Chamelean.DeriveEnum
-import Plausible.Chamelean.Examples.ExampleInductiveRelations
+import Test.CommonDefinitions.STLCDefinitions
 
 set_option guard_msgs.diff true
 
@@ -11,11 +11,11 @@ deriving instance Enum for type, term
 -- Test that we can successfully synthesize instances of `Arbitrary` & `ArbitrarySized`
 -- for both `type` & `term`
 
-/-- info: instEnumSizedType_test -/
+/-- info: instEnumSizedType -/
 #guard_msgs in
 #synth EnumSized type
 
-/-- info: instEnumSizedTerm_test -/
+/-- info: instEnumSizedTerm -/
 #guard_msgs in
 #synth EnumSized term
 

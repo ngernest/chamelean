@@ -53,3 +53,6 @@ import Test.DeriveEnumSuchThat.DeriveRegExpMatchEnumerator
 import Test.DeriveEnumSuchThat.SimultaneousMatchingTests
 import Test.DeriveEnumSuchThat.DeriveSTLCEnumerator
 import Test.DeriveEnumSuchThat.NonLinearPatternsTest
+import Test.DeriveArbitrary.MissingNonRecursiveConstructorTest
+import Test.DeriveArbitrary.ParameterizedTypeTest
+import Test.DeriveArbitrary.MutuallyRecursiveTypeTest

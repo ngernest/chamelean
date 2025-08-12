@@ -6,6 +6,7 @@ import Plausible.Chamelean.ArbitrarySizedSuchThat
 import Plausible.Chamelean.DeriveConstrainedProducer
 import Test.CommonDefinitions.BinaryTree
 
+open Plausible
 open ArbitrarySizedSuchThat OptionTGen
 
 set_option guard_msgs.diff true

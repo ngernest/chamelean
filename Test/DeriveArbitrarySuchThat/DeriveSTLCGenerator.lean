@@ -1,12 +1,14 @@
 import Plausible.Gen
 import Plausible.Chamelean.OptionTGen
 import Plausible.Chamelean.DecOpt
-import Plausible.Chamelean.Arbitrary
+import Plausible.Arbitrary
 import Plausible.Chamelean.ArbitrarySizedSuchThat
 import Test.DeriveArbitrary.DeriveSTLCTermTypeGenerators
 import Test.DeriveDecOpt.DeriveSTLCChecker
 import Plausible.Chamelean.DeriveConstrainedProducer
+import Test.CommonDefinitions.STLCDefinitions
 
+open Plausible
 open ArbitrarySizedSuchThat OptionTGen
 
 set_option guard_msgs.diff true
@@ -132,7 +134,7 @@ info: Try this generator: instance : ArbitrarySizedSuchThat type (fun t_1 => typ
               | term.App e1 e2 => do
                 let τ1 ← aux_arb initSize size' G_1 e2;
                 do
-                  let t_1 ← Arbitrary.arbitrary;
+                  let t_1 ← Plausible.Arbitrary.arbitrary;
                   match DecOpt.decOpt (typing G_1 e1 (type.Fun τ1 t_1)) initSize with
                     | Option.some Bool.true => return t_1
                     | _ => OptionT.fail
@@ -152,7 +154,7 @@ info: Try this generator: instance : ArbitrarySizedSuchThat term (fun e_1 => typ
           [(1,
               match t_1 with
               | type.Nat => do
-                let n ← Arbitrary.arbitrary;
+                let n ← Plausible.Arbitrary.arbitrary;
                 return term.Const n
               | _ => OptionT.fail),
             (1, do
@@ -163,7 +165,7 @@ info: Try this generator: instance : ArbitrarySizedSuchThat term (fun e_1 => typ
           [(1,
               match t_1 with
               | type.Nat => do
-                let n ← Arbitrary.arbitrary;
+                let n ← Plausible.Arbitrary.arbitrary;
                 return term.Const n
               | _ => OptionT.fail),
             (1, do
@@ -184,7 +186,7 @@ info: Try this generator: instance : ArbitrarySizedSuchThat term (fun e_1 => typ
                 return term.Abs τ1 e
               | _ => OptionT.fail),
             (Nat.succ size', do
-              let e2 ← Arbitrary.arbitrary;
+              let e2 ← Plausible.Arbitrary.arbitrary;
               do
                 let τ1 ← ArbitrarySizedSuchThat.arbitrarySizedST (fun τ1 => typing G_1 e2 τ1) initSize;
                 do

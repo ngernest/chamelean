@@ -1,6 +1,6 @@
 import Plausible.Chamelean.Examples.ExampleInductiveRelations
 import Plausible.Chamelean.OptionTGen
-import Plausible.Chamelean.Arbitrary
+import Plausible.Arbitrary
 import Plausible.Chamelean.ArbitrarySizedSuchThat
 import Plausible.Chamelean.DecOpt
 

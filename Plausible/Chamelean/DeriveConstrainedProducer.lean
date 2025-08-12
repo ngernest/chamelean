@@ -6,15 +6,11 @@ import Plausible.Chamelean.Schedules
 import Plausible.Chamelean.DeriveSchedules
 import Plausible.Chamelean.MExp
 import Plausible.Chamelean.MakeConstrainedProducerInstance
-import Plausible.Chamelean.DeriveArbitrary
+import Plausible.DeriveArbitrary
 import Plausible.Chamelean.TSyntaxCombinators
 import Plausible.Chamelean.Utils
 import Plausible.Chamelean.Debug
-
-import Plausible.Chamelean.Examples.ExampleInductiveRelations
-
-import Plausible.Chamelean.Arbitrary
-import Plausible.Chamelean.Examples.STLC
+import Plausible.Arbitrary
 
 import Lean.Elab.Command
 import Lean.Meta.Basic

@@ -4,11 +4,43 @@ import Plausible.Chamelean.Idents
 import Plausible.Chamelean.TSyntaxCombinators
 import Plausible.Chamelean.Enumerators
 import Plausible.Chamelean.Utils
-import Plausible.Chamelean.DeriveArbitrary
+import Plausible.DeriveArbitrary
 
 open Lean Elab Command Meta Term Parser
 
 open Idents
+
+/-- Takes the name of a constructor for an algebraic data type and returns an array
+    containing `(argument_name, argument_type)` pairs.
+
+    If the algebraic data type is defined using anonymous constructor argument syntax, i.e.
+    ```
+    inductive T where
+      C1 : τ1 → … → τn
+      …
+    ```
+    Lean produces macro scopes when we try to access the names for the constructor args.
+    In this case, we remove the macro scopes so that the name is user-accessible.
+    (This will result in constructor argument names being non-unique in the array
+    that is returned -- it is the caller's responsibility to produce fresh names,
+    e.g. using `Idents.genFreshNames`.)
+-/
+def getArgsAndTypesFromCtorName (ctorName : Name) : MetaM (Array (Name × Expr)) := do
+  let ctorInfo ← getConstInfoCtor ctorName
+
+  forallTelescopeReducing ctorInfo.type fun args _ => do
+    let mut argNamesAndTypes := #[]
+    for arg in args.toList do
+      let localDecl ← arg.fvarId!.getDecl
+      let mut argName := localDecl.userName
+      -- Check if the name has macro scopes
+      -- If so, remove them so that we can produce a user-accessible name
+      -- (macro scopes appear in the name )
+      if argName.hasMacroScopes then
+        argName := Name.eraseMacroScopes argName
+      argNamesAndTypes := Array.push argNamesAndTypes (argName, localDecl.type)
+
+    return argNamesAndTypes
 
 /-- Creates an instance of the `ArbitrarySized` typeclass for an inductive type
     whose name is given by `targetTypeName`.
@@ -33,7 +65,7 @@ def mkEnumSizedInstance (targetTypeName : Name) : CommandElabM (TSyntax `command
   for ctorName in inductiveVal.ctors do
     let ctorIdent := mkIdent ctorName
 
-    let ctorArgNamesTypes ← liftTermElabM $ getCtorArgsNamesAndTypes ctorName
+    let ctorArgNamesTypes ← liftTermElabM $ getArgsAndTypesFromCtorName ctorName
 
     if ctorArgNamesTypes.isEmpty then
       -- Constructor is nullary, we can just use an enumerator of the form `pure ...`
