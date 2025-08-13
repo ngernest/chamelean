@@ -389,8 +389,6 @@ def getScheduleForInductiveRelationConstructor (inductiveName : Name) (ctorName 
         -- (constructor name applied to some list of arguments, which are themselves `ConstructorExpr`s)
         hypothesisExprs := hypothesisExprs.push (← convertRangeToCtorAppForm hypRange)
 
-
-
       -- Creates the initial `UnifyState` needed for the unification algorithm
       let initialUnifyState ←
         match deriveSort with
@@ -411,7 +409,6 @@ def getScheduleForInductiveRelationConstructor (inductiveName : Name) (ctorName 
       let unknowns := if deriveSort.isProducer then unknownsArray else inputNames.toArray
       let unknownRanges ← unknowns.mapM processCorrespondingRange
       let unknownArgsAndRanges := unknowns.zip unknownRanges
-
 
       -- Compute the appropriate `Range` for each argument in the constructor's conclusion
       let conclusionArgs := updatedConclusion.getAppArgs

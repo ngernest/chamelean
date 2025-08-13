@@ -74,7 +74,9 @@ inductive MExp where
   | MOutOfFuel
 
   /-- Represents a let-expression `let x := e1; e2`.
-      Note that `let x := e1` is compiled to a non-monadic let-binding. -/
+      Note that `let x := e1` is compiled to a non-monadic let-binding.
+
+      (Note: `MLet` is currently unused.) -/
   | MLet (x : Name) (e1 : MExp) (e2 : MExp)
 
   deriving Repr, Inhabited, BEq
