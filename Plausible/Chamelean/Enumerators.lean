@@ -78,10 +78,6 @@ instance [EnumSizedSuchThat α P] : EnumSuchThat α P where
 instance : Enum Bool where
   enum := pureEnum false <|> pureEnum true
 
-/-- `Enum` instance for `Nat` -/
-instance : Enum Nat where
-  enum := fun n => lazySeq .succ 0 (n + 1)
-
 /-- `Enum` instance for `Option`s -/
 instance [Enum α] : Enum (Option α) where
   enum := fun n =>
@@ -99,22 +95,44 @@ instance [Enum α] [Enum β] : Enum (α ⊕ β) where
   enum := fun n =>
     (Enum.enum n >>= pure ∘ Sum.inl) <|> (Enum.enum n >>= pure ∘ Sum.inr)
 
-/-- Helper function: enumerates lists with a certain `budget` that is
-    halved during each recursive calls -/
-def enumListsWithBudget [Enum α] (budget : Nat) : LazyList (List α) :=
-  let empty := LazyList.singleton []
-  match budget with
-  | 0 => empty
-  | .succ budget' =>
-    let non_empty := do
-      let hd ← Enum.enum budget
-      let tl ← enumListsWithBudget (budget' / 2)
-      pure (hd :: tl)
-    empty <|> non_empty
+/-- Produces a `LazyList` containing all `Int`s in-between
+    `lo` and `hi` (inclusive) in ascending order -/
+def lazyListNatRange (lo : Nat) (hi : Nat) : LazyList Nat :=
+  lazySeq .succ lo (.succ (hi - lo))
 
-/-- `Enum` instances for lists -/
-instance [Enum α] : Enum (List α) where
-  enum := sizedEnum (fun size => (fun _ => enumListsWithBudget size))
+/-- Enumerates all `Nat`s in-between `lo` and `hi` (inclusive)
+    in ascending order -/
+def enumNatRange (lo : Nat) (hi : Nat) : Enumerator Nat :=
+  fun _ => lazyListNatRange lo hi
+
+/-- `EnumSized` instance for `Nat` -/
+instance : EnumSized Nat where
+  enumSized (n : Nat) := enumNatRange 0 n
+
+/-- Produces a `LazyList` containing all `Int`s in-between
+    `lo` and `hi` (inclusive) in ascending order -/
+def lazyListIntRange (lo : Int) (hi : Int) : LazyList Int :=
+  lazySeq (. + 1) lo (Int.toNat (hi - lo + 1))
+
+/-- `Enum` instance for `Int` (enumerates all `int`s between `-size` and `size` inclusive) -/
+instance : Enum Int where
+  enum := fun size =>
+    let n := Int.ofNat size
+    lazyListIntRange (-n) n
+
+/-- `vectorOf k e` creates an enumerator of lists of length `k`,
+     where each element in the list comes from the enumerator `e` -/
+def vectorOf (k : Nat) (e : Enumerator α) : Enumerator (List α) :=
+  List.foldr (fun m m' => do
+    let x ← m
+    let xs ← m'
+    return x::xs) (init := pure []) (List.replicate k e)
+
+/-- `EnumSized` instance for lists -/
+instance [Enum α] : EnumSized (List α) where
+  enumSized (n : Nat) := do
+    let x ← enumNatRange 0 n
+    vectorOf x Enum.enum
 
 /-- Enumerates all printable ASCII characters (codepoint 32 - 95) -/
 def enumPrintableASCII (size : Nat) : LazyList Char :=
@@ -127,27 +145,6 @@ instance : Enum Char where
 /-- `Enum` instance for `String`s containing ASCII-printable characters -/
 instance : Enum String where
   enum := List.asString <$> (Enum.enum : Enumerator (List Char))
-
-/-- Produces a `LazyList` containing all `Int`s in-between
-    `lo` and `hi` (inclusive) in ascending order -/
-def lazyListNatRange (lo : Nat) (hi : Nat) : LazyList Nat :=
-  lazySeq .succ lo (.succ (hi - lo))
-
-/-- Enumerates all `Nat`s in-between `lo` and `hi` (inclusive)
-    in ascending order -/
-def enumNatRange (lo : Nat) (hi : Nat) : Enumerator Nat :=
-  fun _ => lazyListNatRange lo hi
-
-/-- Produces a `LazyList` containing all `Int`s in-between
-    `lo` and `hi` (inclusive) in ascending order -/
-def lazyListIntRange (lo : Int) (hi : Int) : LazyList Int :=
-  lazySeq (. + 1) lo (Int.toNat (hi - lo + 1))
-
-/-- `Enum` instance for `Int` (enumerates all `int`s between `-size` and `size` inclusive) -/
-instance : Enum Int where
-  enum := fun size =>
-    let n := Int.ofNat size
-    lazyListIntRange (-n) n
 
 /-- `Enum` instance for `Fin n` where `n > 0`
   (enumerates all `Nat`s from 0 to `n - 1` inclusive) -/

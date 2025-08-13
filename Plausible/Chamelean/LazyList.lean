@@ -91,7 +91,6 @@ def concatCPS (l : LazyList (LazyList α)) : LazyList α :=
 def concat (l : LazyList (LazyList α)) : LazyList α :=
   concatCPS l
 
-
 /-- Bind for `LazyList`s is just `concatMap` (same as the list monad) -/
 def bindLazyList (l : LazyList α) (f : α → LazyList β) : LazyList β :=
   concat (f <$> l)
