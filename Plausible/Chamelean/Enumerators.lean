@@ -161,16 +161,15 @@ instance : Enum (BitVec w) where
 
 -- Sampling from enumerators
 
-/-- Returns the list of elements produced by the enumerator
+/-- Returns a list of up to `limit` elements produced by the enumerator
     associated with the `Enum` instance for a type,
     using `size` as the size parameter for the enumerator.
     To invoke this function, you will need to specify what type `α` is,
     for example by doing `runEnum (α := Nat) 10`. -/
-def runEnum [Enum α] (size : Nat) : IO (List α) :=
-  return (LazyList.toList $ Enum.enum size)
+def runEnum [Enum α] (size : Nat) (limit : Nat := 10) : IO (List α) :=
+  return (LazyList.toList $ LazyList.take limit $ Enum.enum size)
 
 /-- Samples from an `OptionT Enumerator` enumerator that is parameterized by its `size`,
-    returning the enumerated list of `Option α` values in the `IO` monad
-    - TODO: investigate why there are many duplicate values in the resultant `LazyList` -/
-def runSizedEnum (sizedEnum : Nat → OptionT Enumerator α) (size : Nat) : IO (List (Option α)) :=
-  return (LazyList.toList $ (sizedEnum size) size)
+    returning the enumerated list of `Option α` values (containing up to `limit` elements) in the `IO` monad -/
+def runSizedEnum (sizedEnum : Nat → OptionT Enumerator α) (size : Nat) (limit : Nat := 10) : IO (List (Option α)) :=
+  return (LazyList.toList $ LazyList.take limit $ (sizedEnum size) size)

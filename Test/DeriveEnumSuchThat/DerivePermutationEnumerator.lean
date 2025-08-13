@@ -77,4 +77,4 @@ info: Try this enumerator: instance : EnumSizedSuchThat (List Nat) (fun l_1 => P
 
 def l := [1, 2, 3]
 
-#eval runSizedEnum (EnumSizedSuchThat.enumSizedST (fun l' => Permutation l l')) 1
+#eval runSizedEnum (EnumSizedSuchThat.enumSizedST (fun l' => Permutation l l')) 3
