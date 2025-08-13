@@ -8,6 +8,7 @@ import Plausible.Chamelean.DeriveChecker
 import Test.CommonDefinitions.ListRelations
 import Test.DeriveDecOpt.SimultaneousMatchingTests
 
+open Plausible
 open ArbitrarySizedSuchThat OptionTGen
 
 set_option guard_msgs.diff true
@@ -21,17 +22,17 @@ info: Try this generator: instance : ArbitrarySizedSuchThat (List Nat) (fun l_1 
       | Nat.zero =>
         OptionTGen.backtrack
           [(1, do
-              let l ← Arbitrary.arbitrary;
+              let l ← Plausible.Arbitrary.arbitrary;
               return List.cons x_1 l)]
       | Nat.succ size' =>
         OptionTGen.backtrack
           [(1, do
-              let l ← Arbitrary.arbitrary;
+              let l ← Plausible.Arbitrary.arbitrary;
               return List.cons x_1 l),
             (Nat.succ size', do
               let l ← aux_arb initSize size' x_1;
               do
-                let y ← Arbitrary.arbitrary;
+                let y ← Plausible.Arbitrary.arbitrary;
                 return List.cons y l)]
     fun size => aux_arb size size x_1
 -/
@@ -127,7 +128,7 @@ info: Try this generator: instance : ArbitrarySizedSuchThat (List Nat) (fun l_1 
                 | _ => OptionT.fail
               | _ => OptionT.fail),
             (1, do
-              let l_1 ← Arbitrary.arbitrary;
+              let l_1 ← Plausible.Arbitrary.arbitrary;
               do
                 let l'_1 ←
                   ArbitrarySizedSuchThat.arbitrarySizedST
@@ -143,7 +144,7 @@ info: Try this generator: instance : ArbitrarySizedSuchThat (List Nat) (fun l_1 
                 | _ => OptionT.fail
               | _ => OptionT.fail),
             (1, do
-              let l_1 ← Arbitrary.arbitrary;
+              let l_1 ← Plausible.Arbitrary.arbitrary;
               do
                 let l'_1 ←
                   ArbitrarySizedSuchThat.arbitrarySizedST
@@ -219,7 +220,7 @@ info: Try this generator: instance : ArbitrarySizedSuchThat (List Nat) (fun l_1 
             (Nat.succ size',
               match x_1 with
               | Nat.succ x => do
-                let l_1 ← Arbitrary.arbitrary;
+                let l_1 ← Plausible.Arbitrary.arbitrary;
                 do
                   let l' ← ArbitrarySizedSuchThat.arbitrarySizedST (fun l' => MinEx2 x l_1 l') initSize;
                   do

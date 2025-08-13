@@ -1,4 +1,4 @@
-import Plausible.Chamelean.Arbitrary
+import Plausible.Arbitrary
 import Plausible.Chamelean.ArbitrarySizedSuchThat
 import Plausible.Chamelean.Enumerators
 import Plausible.Chamelean.DecOpt
@@ -7,6 +7,7 @@ import Plausible.Chamelean.Schedules
 import Plausible.Chamelean.UnificationMonad
 import Plausible.Chamelean.Idents
 
+open Plausible
 open Idents
 open Lean Parser Elab Term Command
 
@@ -300,8 +301,9 @@ mutual
             else
               mkTuple vars
           -- If a checker invokes a contrained enumerator,
-          -- we call `EnumeratorCombinators.enumeratingOpt`
-          `($enumeratingOptFn $m1:term (fun $args:term => $k1:term) $initSizeIdent)
+          -- we call `EnumeratorCombinators.enumeratingOpt`.
+          -- We pass in `(min 2 initSize)` as the amount of fuel for the enumerator to avoid stack-overflow
+          `($enumeratingOptFn $m1:term (fun $args:term => $k1:term) ($(mkIdent `min) 2 $initSizeIdent))
       | .Theorem, _ => throwError "Theorem DeriveSort not implemented yet"
       | _, _ => throwError m!"Invalid monadic bind for deriveSort {repr deriveSort}"
     | .MMatch scrutinee cases => do

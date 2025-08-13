@@ -1,6 +1,5 @@
 import Lean.Expr
 import Batteries
-import Plausible.Chamelean.Examples.ExampleInductiveRelations
 import Plausible.Chamelean.Utils
 import Plausible.Chamelean.Schedules
 import Plausible.Chamelean.UnificationMonad
@@ -57,8 +56,6 @@ def isRecCall (binding : List Name) (hyp : HypothesisExpr) (recCall : Name × Li
   let (inductiveName, recCallOutputIdxes) := recCall
 
   return (ctorName == inductiveName && (recCallOutputIdxes.mergeSort) == (outputPositions.mergeSort))
-
-
 
 
 /-- Given a list of `hypotheses`, creates an association list mapping each hypothesis to a list of variable names.

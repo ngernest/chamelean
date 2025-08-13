@@ -6,12 +6,21 @@ Authors: Henrik Böving
 -- import Test.Tactic
 -- import Test.Testable
 
+-- Common definitions for snapshot tests
+import Test.CommonDefinitions.BinaryTree
+import Test.CommonDefinitions.FunctionCallInConclusion
+import Test.CommonDefinitions.ListRelations
+import Test.CommonDefinitions.Permutation
+import Test.CommonDefinitions.STLCDefinitions
+
 -- Tests for `#derive_generator` (derives `ArbitrarySuchThat`)
 import Test.DeriveArbitrarySuchThat.DeriveBSTGenerator
 import Test.DeriveArbitrarySuchThat.DeriveBalancedTreeGenerator
 import Test.DeriveArbitrarySuchThat.DeriveRegExpMatchGenerator
 import Test.DeriveArbitrarySuchThat.SimultaneousMatchingTests
 import Test.DeriveArbitrarySuchThat.FunctionCallsTest
+import Test.DeriveArbitrarySuchThat.DerivePermutationGenerator
+import Test.DeriveArbitrarySuchThat.MutuallyRecursiveRelationsTest
 
 -- Tests for `deriving Arbitrary`
 import Test.DeriveArbitrary.DeriveTreeGenerator
@@ -24,6 +33,9 @@ import Test.DeriveArbitrary.BitVecStructureTest
 import Test.DeriveArbitrarySuchThat.DeriveSTLCGenerator
 import Test.DeriveArbitrarySuchThat.NonLinearPatternsTest
 import Test.DeriveArbitrarySuchThat.EqualityTest
+import Test.DeriveArbitrary.MissingNonRecursiveConstructorTest
+import Test.DeriveArbitrary.ParameterizedTypeTest
+import Test.DeriveArbitrary.MutuallyRecursiveTypeTest
 
 -- Tests for instances of `Enum` for simple types
 import Test.Enum.EnumInstancesTest
@@ -47,6 +59,7 @@ import Test.DeriveDecOpt.FunctionCallsTest
 import Test.DeriveDecOpt.DeriveSTLCChecker
 import Test.DeriveDecOpt.NonLinearPatternsTest
 import Test.DeriveDecOpt.EqualityTest
+import Test.DeriveDecOpt.DerivePermutationChecker
 
 -- Tests for `#derive_enumerator` (derives `EnumSuchThat`)
 import Test.DeriveEnumSuchThat.DeriveBSTEnumerator
@@ -55,3 +68,4 @@ import Test.DeriveEnumSuchThat.DeriveRegExpMatchEnumerator
 import Test.DeriveEnumSuchThat.SimultaneousMatchingTests
 import Test.DeriveEnumSuchThat.DeriveSTLCEnumerator
 import Test.DeriveEnumSuchThat.NonLinearPatternsTest
+import Test.DeriveEnumSuchThat.DerivePermutationEnumerator

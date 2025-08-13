@@ -83,7 +83,6 @@ def genTypeConstructor : Ident := mkIdent ``Plausible.Gen
 def enumTypeConstructor : Ident := mkIdent $ Name.mkStr1 "Enumerator"
 
 
-
 /-- Produces a fresh user-facing & *accessible* identifier with respect to the local context
     - Note: prefer using this function over `Core.mkFreshUserName`, which is meant
       to create fresh names that are *inaccessible* to the user (i.e. `mkFreshUserName` will

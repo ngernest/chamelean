@@ -89,16 +89,16 @@ info: Try this checker: instance : DecOpt (NatChain a_1 b_1) where
             EnumeratorCombinators.enumeratingOpt (EnumSizedSuchThat.enumSizedST (fun x => LessThanEq a_1 x) initSize)
               (fun x =>
                 EnumeratorCombinators.enumeratingOpt (EnumSizedSuchThat.enumSizedST (fun y => LessThanEq x y) initSize)
-                  (fun y => DecOpt.decOpt (LessThanEq y b_1) initSize) initSize)
-              initSize]
+                  (fun y => DecOpt.decOpt (LessThanEq y b_1) initSize) (min 2 initSize))
+              (min 2 initSize)]
       | Nat.succ size' =>
         DecOpt.checkerBacktrack
           [fun _ =>
             EnumeratorCombinators.enumeratingOpt (EnumSizedSuchThat.enumSizedST (fun x => LessThanEq a_1 x) initSize)
               (fun x =>
                 EnumeratorCombinators.enumeratingOpt (EnumSizedSuchThat.enumSizedST (fun y => LessThanEq x y) initSize)
-                  (fun y => DecOpt.decOpt (LessThanEq y b_1) initSize) initSize)
-              initSize,
+                  (fun y => DecOpt.decOpt (LessThanEq y b_1) initSize) (min 2 initSize))
+              (min 2 initSize),
             ]
     fun size => aux_dec size size a_1 b_1
 -/

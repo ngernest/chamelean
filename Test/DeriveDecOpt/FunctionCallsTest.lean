@@ -1,5 +1,6 @@
 import Plausible.Chamelean.DecOpt
 import Plausible.Chamelean.DeriveChecker
+import Plausible.Chamelean.EnumeratorCombinators
 import Test.CommonDefinitions.FunctionCallInConclusion
 
 open DecOpt
@@ -21,13 +22,13 @@ info: Try this checker: instance : DecOpt (square_of n_1 m_1) where
           [fun _ =>
             EnumeratorCombinators.enumeratingOpt
               (EnumSizedSuchThat.enumSizedST (fun m_1 => Eq m_1 (HMul.hMul n_1 n_1)) initSize)
-              (fun m_1 => Option.some Bool.true) initSize]
+              (fun m_1 => Option.some Bool.true) (min 2 initSize)]
       | Nat.succ size' =>
         DecOpt.checkerBacktrack
           [fun _ =>
             EnumeratorCombinators.enumeratingOpt
               (EnumSizedSuchThat.enumSizedST (fun m_1 => Eq m_1 (HMul.hMul n_1 n_1)) initSize)
-              (fun m_1 => Option.some Bool.true) initSize,
+              (fun m_1 => Option.some Bool.true) (min 2 initSize),
             ]
     fun size => aux_dec size size n_1 m_1
 -/
