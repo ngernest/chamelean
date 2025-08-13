@@ -20,6 +20,7 @@ import Test.DeriveArbitrarySuchThat.DeriveRegExpMatchGenerator
 import Test.DeriveArbitrarySuchThat.SimultaneousMatchingTests
 import Test.DeriveArbitrarySuchThat.FunctionCallsTest
 import Test.DeriveArbitrarySuchThat.DerivePermutationGenerator
+import Test.DeriveArbitrarySuchThat.MutuallyRecursiveRelationsTest
 
 -- Tests for `deriving Arbitrary`
 import Test.DeriveArbitrary.DeriveTreeGenerator
