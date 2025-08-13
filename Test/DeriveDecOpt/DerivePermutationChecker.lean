@@ -56,8 +56,14 @@ info: Try this checker: instance : DecOpt (Permutation l_1 l'_1) where
             | _ => Option.some Bool.false,
             fun _ =>
             EnumeratorCombinators.enumeratingOpt (EnumSizedSuchThat.enumSizedST (fun l' => Permutation l_1 l') initSize)
-              (fun l' => aux_dec initSize size' l' l'_1) initSize]
+              (fun l' => aux_dec initSize size' l' l'_1) (min 2 initSize)]
     fun size => aux_dec size size l_1 l'_1
 -/
 #guard_msgs(info, drop warning) in
 #derive_checker (Permutation l l')
+
+
+-- Example: to run the derived checker, you can uncomment the following
+-- def l := [1, 2, 3, 4]
+-- def l' := [2, 1, 3, 4]
+-- #eval (DecOpt.decOpt (Permutation l l')) 2
