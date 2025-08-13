@@ -33,7 +33,7 @@ inductive MonadSort
       (e.g. combine pattern-matches when we have disjoint patterns
     - The cool thing about `MExp` is that we can interpret it differently
       based on the `MonadSort` -/
-inductive MExp : Type where
+inductive MExp where
   /-- `MRet e` represents `return e` in some monad -/
   | MRet (e : MExp)
 
@@ -72,6 +72,10 @@ inductive MExp : Type where
 
   /-- Signifies running out of fuel -/
   | MOutOfFuel
+
+  /-- Represents a let-expression `let x := e1; e2`.
+      Note that `let x := e1` is compiled to a non-monadic let-binding. -/
+  | MLet (x : Name) (e1 : MExp) (e2 : MExp)
 
   deriving Repr, Inhabited, BEq
 
@@ -314,6 +318,10 @@ mutual
         let compiledRHS ← mexpToTSyntax rhs deriveSort
         `(Term.matchAltExpr| | $lhs:term => $compiledRHS))
       `(match $compiledScrutinee:term with $compiledCases:matchAlt*)
+    | .MLet x mexp1 mexp2 => do
+      let e1 ← mexpToTSyntax mexp1 deriveSort
+      let e2 ← mexpToTSyntax mexp2 deriveSort
+      `(let $(mkIdent x) := $e1:term ; $e2:term)
 
   /-- `MExp` representation of a constrained producer,
       parameterized by a `producerSort`, a list of variable names & their types `varsTys`,
