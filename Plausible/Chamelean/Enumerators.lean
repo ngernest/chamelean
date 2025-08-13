@@ -72,15 +72,6 @@ instance [EnumSized α] : Enum α where
 instance [EnumSizedSuchThat α P] : EnumSuchThat α P where
   enumST := sizedEnum (EnumSizedSuchThat.enumSizedST P)
 
-
-/-- `vectorOf k e` creates an enumerator of lists of length `k`,
-     where each element in the list comes from the enumerator `e` -/
-def vectorOf (k : Nat) (e : Enumerator α) : Enumerator (List α) :=
-  List.foldr (fun m m' => do
-    let x ← m
-    let xs ← m'
-    return x::xs) (init := pure []) (List.replicate k e)
-
 /-- Produces a `LazyList` containing all `Int`s in-between
     `lo` and `hi` (inclusive) in ascending order -/
 def lazyListNatRange (lo : Nat) (hi : Nat) : LazyList Nat :=
@@ -95,14 +86,26 @@ def enumNatRange (lo : Nat) (hi : Nat) : Enumerator Nat :=
 instance : EnumSized Nat where
   enumSized (n : Nat) := enumNatRange 0 n
 
-/-- Picks one of the enumerators in `es`, returning the `default` enumerator
-    if `es` is empty. -/
-def oneOfWithDefault (default : Enumerator α) (es : List (Enumerator α)) : Enumerator α :=
-  match es with
-  | [] => default
-  | _ => do
-    let idx ← enumNatRange 0 (es.length - 1)
-    List.getD es idx default
+namespace EnumeratorCombinators
+
+  /-- `vectorOf k e` creates an enumerator of lists of length `k`,
+      where each element in the list comes from the enumerator `e` -/
+  def vectorOf (k : Nat) (e : Enumerator α) : Enumerator (List α) :=
+    List.foldr (fun m m' => do
+      let x ← m
+      let xs ← m'
+      return x::xs) (init := pure []) (List.replicate k e)
+
+  /-- Picks one of the enumerators in `es`, returning the `default` enumerator
+      if `es` is empty. -/
+  def oneOfWithDefault (default : Enumerator α) (es : List (Enumerator α)) : Enumerator α :=
+    match es with
+    | [] => default
+    | _ => do
+      let idx ← enumNatRange 0 (es.length - 1)
+      List.getD es idx default
+
+end EnumeratorCombinators
 
 -- Some simple `Enum` instances
 
@@ -112,7 +115,7 @@ instance : Enum Bool where
 
 /-- `Enum` instance for `Option`s -/
 instance [Enum α] : Enum (Option α) where
-  enum := oneOfWithDefault (pure none) [
+  enum := EnumeratorCombinators.oneOfWithDefault (pure none) [
     pure none,
     some <$> Enum.enum
   ]
@@ -144,7 +147,7 @@ instance : Enum Int where
 instance [Enum α] : EnumSized (List α) where
   enumSized (n : Nat) := do
     let x ← enumNatRange 0 n
-    vectorOf x Enum.enum
+    EnumeratorCombinators.vectorOf x Enum.enum
 
 /-- Enumerates all printable ASCII characters (codepoint 32 - 95) -/
 def enumPrintableASCII (size : Nat) : LazyList Char :=
