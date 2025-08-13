@@ -61,7 +61,7 @@ info: Try this checker: instance : DecOpt (typing Γ_1 e_1 τ_1) where
             match e_1 with
             | term.App e1 e2 =>
               EnumeratorCombinators.enumeratingOpt (EnumSizedSuchThat.enumSizedST (fun τ1 => typing Γ_1 e2 τ1) initSize)
-                (fun τ1 => aux_dec initSize size' Γ_1 e1 (type.Fun τ1 τ_1)) initSize
+                (fun τ1 => aux_dec initSize size' Γ_1 e1 (type.Fun τ1 τ_1)) (min 2 initSize)
             | _ => Option.some Bool.false]
     fun size => aux_dec size size Γ_1 e_1 τ_1
 -/
