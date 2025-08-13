@@ -6,6 +6,13 @@ Authors: Henrik Böving
 -- import Test.Tactic
 -- import Test.Testable
 
+-- Common definitions for snapshot tests
+import Test.CommonDefinitions.BinaryTree
+import Test.CommonDefinitions.FunctionCallInConclusion
+import Test.CommonDefinitions.ListRelations
+import Test.CommonDefinitions.Permutation
+import Test.CommonDefinitions.STLCDefinitions
+
 -- Tests for `#derive_generator` (derives `ArbitrarySuchThat`)
 import Test.DeriveArbitrarySuchThat.DeriveBSTGenerator
 import Test.DeriveArbitrarySuchThat.DeriveBalancedTreeGenerator
@@ -48,6 +55,7 @@ import Test.DeriveDecOpt.ExistentialVariablesTest
 import Test.DeriveDecOpt.FunctionCallsTest
 import Test.DeriveDecOpt.DeriveSTLCChecker
 import Test.DeriveDecOpt.NonLinearPatternsTest
+import Test.DeriveDecOpt.DerivePermutationChecker
 
 -- Tests for `#derive_enumerator` (derives `EnumSuchThat`)
 import Test.DeriveEnumSuchThat.DeriveBSTEnumerator
