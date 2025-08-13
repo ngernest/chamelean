@@ -8,6 +8,25 @@ open LazyList
     contains all inhabitants of `α` up to the given size. -/
 abbrev Enumerator (α : Type) := Nat → LazyList α
 
+/-- The `Enum` typeclass describes types that have an associated `Enumerator` -/
+class Enum (α : Type) where
+  enum : Enumerator α
+
+/-- The `EnumSized` typeclass describes enumerators that have an
+    additional `Nat` parameter to bound their recursion depth. -/
+class EnumSized (α : Type) where
+  enumSized : Nat → Enumerator α
+
+/-- Sized enumerators of type `α` such that `P : α -> Prop` holds for all enumerated values.
+    Note that these enumerators may fail, which is why they have type `OptionT Enumerator α`. -/
+class EnumSizedSuchThat (α : Type) (P : α → Prop) where
+  enumSizedST : Nat → OptionT Enumerator α
+
+/-- Enumerators of type `α` such that `P : α -> Prop` holds for all generated values.
+    Note that these enumerators may fail, which is why they have type `OptionT Enumerator α`. -/
+class EnumSuchThat (α : Type) (P : α → Prop) where
+  enumST : OptionT Enumerator α
+
 /-- `pure x` constructs a trivial enumerator which produces a singleton `LazyList` containing `x` -/
 def pureEnum (x : α) : Enumerator α :=
   fun _ => pureLazyList x
@@ -45,25 +64,6 @@ instance : Alternative Enumerator where
 def sizedEnum (f : Nat → Enumerator α) : Enumerator α :=
   fun (n : Nat) => (f n) n
 
-/-- The `Enum` typeclass describes types that have an associated `Enumerator` -/
-class Enum (α : Type) where
-  enum : Enumerator α
-
-/-- The `EnumSized` typeclass describes enumerators that have an
-    additional `Nat` parameter to bound their recursion depth. -/
-class EnumSized (α : Type) where
-  enumSized : Nat → Enumerator α
-
-/-- Sized enumerators of type `α` such that `P : α -> Prop` holds for all enumerated values.
-    Note that these enumerators may fail, which is why they have type `OptionT Enumerator α`. -/
-class EnumSizedSuchThat (α : Type) (P : α → Prop) where
-  enumSizedST : Nat → OptionT Enumerator α
-
-/-- Enumerators of type `α` such that `P : α -> Prop` holds for all generated values.
-    Note that these enumerators may fail, which is why they have type `OptionT Enumerator α`. -/
-class EnumSuchThat (α : Type) (P : α → Prop) where
-  enumST : OptionT Enumerator α
-
 /-- Every `EnumSized` instance gives rise to an `Enum` instance -/
 instance [EnumSized α] : Enum α where
   enum := sizedEnum EnumSized.enumSized
@@ -72,28 +72,14 @@ instance [EnumSized α] : Enum α where
 instance [EnumSizedSuchThat α P] : EnumSuchThat α P where
   enumST := sizedEnum (EnumSizedSuchThat.enumSizedST P)
 
--- Some simple `Enum` instances
 
-/-- `Enum` instance for `Bool` -/
-instance : Enum Bool where
-  enum := pureEnum false <|> pureEnum true
-
-/-- `Enum` instance for `Option`s -/
-instance [Enum α] : Enum (Option α) where
-  enum := fun n =>
-    (return none) <|> (some <$> Enum.enum n)
-
-/-- `Enum` instances for pairs -/
-instance [Enum α] [Enum β] : Enum (α × β) where
-  enum := fun n => do
-    let a ← Enum.enum n
-    let b ← Enum.enum n
-    pure (a, b)
-
-/-- `Enum` instances for sums -/
-instance [Enum α] [Enum β] : Enum (α ⊕ β) where
-  enum := fun n =>
-    (Enum.enum n >>= pure ∘ Sum.inl) <|> (Enum.enum n >>= pure ∘ Sum.inr)
+/-- `vectorOf k e` creates an enumerator of lists of length `k`,
+     where each element in the list comes from the enumerator `e` -/
+def vectorOf (k : Nat) (e : Enumerator α) : Enumerator (List α) :=
+  List.foldr (fun m m' => do
+    let x ← m
+    let xs ← m'
+    return x::xs) (init := pure []) (List.replicate k e)
 
 /-- Produces a `LazyList` containing all `Int`s in-between
     `lo` and `hi` (inclusive) in ascending order -/
@@ -109,6 +95,40 @@ def enumNatRange (lo : Nat) (hi : Nat) : Enumerator Nat :=
 instance : EnumSized Nat where
   enumSized (n : Nat) := enumNatRange 0 n
 
+/-- Picks one of the enumerators in `es`, returning the `default` enumerator
+    if `es` is empty. -/
+def oneOfWithDefault (default : Enumerator α) (es : List (Enumerator α)) : Enumerator α :=
+  match es with
+  | [] => default
+  | _ => do
+    let idx ← enumNatRange 0 (es.length - 1)
+    List.getD es idx default
+
+-- Some simple `Enum` instances
+
+/-- `Enum` instance for `Bool` -/
+instance : Enum Bool where
+  enum := pureEnum false <|> pureEnum true
+
+/-- `Enum` instance for `Option`s -/
+instance [Enum α] : Enum (Option α) where
+  enum := oneOfWithDefault (pure none) [
+    pure none,
+    some <$> Enum.enum
+  ]
+
+/-- `Enum` instances for pairs -/
+instance [Enum α] [Enum β] : Enum (α × β) where
+  enum := fun n => do
+    let a ← Enum.enum n
+    let b ← Enum.enum n
+    pure (a, b)
+
+/-- `Enum` instances for sums -/
+instance [Enum α] [Enum β] : Enum (α ⊕ β) where
+  enum := fun n =>
+    (Enum.enum n >>= pure ∘ Sum.inl) <|> (Enum.enum n >>= pure ∘ Sum.inr)
+
 /-- Produces a `LazyList` containing all `Int`s in-between
     `lo` and `hi` (inclusive) in ascending order -/
 def lazyListIntRange (lo : Int) (hi : Int) : LazyList Int :=
@@ -119,14 +139,6 @@ instance : Enum Int where
   enum := fun size =>
     let n := Int.ofNat size
     lazyListIntRange (-n) n
-
-/-- `vectorOf k e` creates an enumerator of lists of length `k`,
-     where each element in the list comes from the enumerator `e` -/
-def vectorOf (k : Nat) (e : Enumerator α) : Enumerator (List α) :=
-  List.foldr (fun m m' => do
-    let x ← m
-    let xs ← m'
-    return x::xs) (init := pure []) (List.replicate k e)
 
 /-- `EnumSized` instance for lists -/
 instance [Enum α] : EnumSized (List α) where

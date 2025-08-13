@@ -38,15 +38,6 @@ def enumerateFuel (fuel : Nat) (total : Nat) (es : List (OptionT Enumerator α))
 def enumerate (es : List (OptionT Enumerator α)) : OptionT Enumerator α :=
   enumerateFuel es.length es.length es
 
-/-- Picks one of the enumerators in `es`, returning the `default` enumerator
-    if `es` is empty. -/
-def oneOfWithDefault (default : Enumerator α) (es : List (Enumerator α)) : Enumerator α :=
-  match es with
-  | [] => default
-  | _ => do
-    let idx ← enumNatRange 0 (es.length - 1)
-    List.getD es idx default
-
 /-- Applies the checker `f` to a `LazyList l` of values, returning the resultant `Option Bool`
     (the parameter `anyNone` is used to indicate whether any of the elements examined previously have been `none`) -/
 def lazyListBacktrack (l : LazyList α) (f : α → Option Bool) (anyNone : Bool) : Option Bool :=
