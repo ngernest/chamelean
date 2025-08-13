@@ -234,8 +234,21 @@ mutual
       let compiledArgs ← args.toArray.mapM (fun e => mexpToTSyntax e deriveSort)
       `($f $compiledArgs*)
     | .MCtr ctorName args => do
-      let compiledArgs ← args.toArray.mapM (fun e => mexpToTSyntax e deriveSort)
-      `($(mkIdent ctorName) $compiledArgs*)
+      if ctorName == `Eq then
+        match args with
+        | .MId lhsVar :: args' => do
+          let localCtx ← getLCtx
+          let freshName := localCtx.getUnusedName `unk
+          let compiledArgs ← args'.toArray.mapM (fun e => mexpToTSyntax e deriveSort)
+          let letDecl ← `(Parser.Term.letDecl| $(mkIdent freshName):ident := $(compiledArgs[0]!))
+          let body ← `($(mkIdent `Eq) $(mkIdent lhsVar) $(mkIdent freshName))
+          Elab.Deriving.mkLet #[letDecl] body
+        | _ =>
+          let compiledArgs ← args.toArray.mapM (fun e => mexpToTSyntax e deriveSort)
+          `($(mkIdent ctorName) $compiledArgs*)
+      else
+        let compiledArgs ← args.toArray.mapM (fun e => mexpToTSyntax e deriveSort)
+        `($(mkIdent ctorName) $compiledArgs*)
     | .MFun vars body => do
       let compiledBody ← mexpToTSyntax body deriveSort
       match vars with

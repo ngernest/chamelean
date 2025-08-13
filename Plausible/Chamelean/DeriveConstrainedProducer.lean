@@ -296,6 +296,9 @@ def rewriteFunctionCallsInConclusion (hypotheses : Array Expr) (conclusion : Exp
         | some freshVar => pure freshVar
         | none => pure subExpr)
 
+      logWarning m!"updatedHypotheses = {updatedHypotheses}"
+      logWarning m!"rewrittenConclusion = {rewrittenConclusion}"
+
       -- Insert the fresh variable into the bound-variable context
       return (updatedHypotheses, rewrittenConclusion, freshUnknownsAndTypes.toList, ← getLCtx))
 
@@ -587,12 +590,18 @@ def deriveConstrainedProducer (outputVar : Ident) (outputTypeSyntax : TSyntax `t
             emptyUnifyState)
         match scheduleOption with
         | some schedule =>
+
+          logWarning m!"schedule = {repr schedule}"
+
           -- Obtain a sub-producer for this constructor, along with an array of all typeclass instances that need to be defined beforehand.
           -- (Under the hood, we compile the schedule to an `MExp`, then compile the `MExp` to a Lean term containing the code for the sub-producer.
           -- This is all done in a state monad: when we detect that a new instance is required, we append it to an array of `TSyntax term`s
           -- (where each term represents a typeclass instance)
           let (subProducer, instances) ← StateT.run (s := #[]) (do
             let mexp ← scheduleToMExp schedule (.MId `size) (.MId `initSize)
+
+            logWarning m!"mexp = {repr mexp}"
+
             mexpToTSyntax mexp deriveSort)
 
           requiredInstances := requiredInstances ++ instances
@@ -703,3 +712,50 @@ def elabDeriveScheduledEnumerator : CommandElab := fun stx => do
     elabCommand typeClassInstance
 
   | _ => throwUnsupportedSyntax
+
+
+inductive square : Nat → Nat → Prop where
+  | sq : forall n, square n (n * n)
+
+-- Dummy `ArbitrarySizedSuchThat` instance so that this compiles
+instance : ArbitrarySizedSuchThat Nat (fun m => m = n * n) where
+  arbitrarySizedST (_size : Nat) := return n * n
+
+-- Note that we now generate a let-expression in the body of `arbitrarySizedST` but this doesn't compile
+-- if we remove the typeclass instance above, because Lean complains it can't find
+-- an instance `ArbitrarySizedSuchThat.arbitrarySizedST (fun m_1 => let unk := HMul.hMul n_1 n_1; Eq m_1 unk)`
+
+/--
+info: Try this generator: instance : ArbitrarySizedSuchThat Nat (fun n_1 => square n_1 m_1) where
+  arbitrarySizedST :=
+    let rec aux_arb (initSize : Nat) (size : Nat) (m_1 : Nat) : OptionT Plausible.Gen Nat :=
+      match size with
+      | Nat.zero =>
+        OptionTGen.backtrack
+          [(1, do
+              let n_1 ← Plausible.Arbitrary.arbitrary;
+              do
+                let m_1 ←
+                  ArbitrarySizedSuchThat.arbitrarySizedST
+                      (fun m_1 =>
+                        let unk := HMul.hMul n_1 n_1;
+                        Eq m_1 unk)
+                      initSize;
+                return n_1)]
+      | Nat.succ size' =>
+        OptionTGen.backtrack
+          [(1, do
+              let n_1 ← Plausible.Arbitrary.arbitrary;
+              do
+                let m_1 ←
+                  ArbitrarySizedSuchThat.arbitrarySizedST
+                      (fun m_1 =>
+                        let unk := HMul.hMul n_1 n_1;
+                        Eq m_1 unk)
+                      initSize;
+                return n_1),
+            ]
+    fun size => aux_arb size size m_1
+-/
+#guard_msgs(info) in
+#derive_generator (fun (n : Nat) => square n m)
