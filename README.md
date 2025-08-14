@@ -3,9 +3,9 @@ Chamelean is an extension of Lean's Plausible property-based testing library whi
 generators, enumerators and checkers for inductive relations.
 
 Our design is heavily inspired by [Coq/Rocq's QuickChick](https://github.com/QuickChick/QuickChick) library and the following papers:
+- *Testing Theorems, Fully Automatically* (under submission, 2025)
 - [*Computing Correctly with Inductive Relations* (PLDI 2022)](https://lemonidas.github.io/pdf/ComputingCorrectly.pdf)
 - [*Generating Good Generators for Inductive Relations* (POPL 2018)](https://lemonidas.github.io/pdf/GeneratingGoodGenerators.pdf)
-- *Testing Theorems, Fully Automatically* (under submission, 2025)
 
 ## Overview
 Like QuickChick, we provide the following typeclasses:
@@ -18,24 +18,17 @@ Like QuickChick, we provide the following typeclasses:
 We provide various top-level commands which automatically derive generators for Lean `inductive`s:
 
 **1. Deriving unconstrained generators/enumerators**              
-An *unconstrained* generator produces random inhabitants of an algebraic data type, while an unconstrained enumerator *enumerates* (deterministically) said inhabitants. 
+An *unconstrained* generator produces random inhabitants of an algebraic data type, while an unconstrained enumerator *enumerates* (deterministically) these inhabitants. 
           
-Users can write `deriving Arbitrary` and/or `deriving Enum` after an inductive type definition, i.e.
+Users can write `deriving Arbitrary` and/or `deriving Enum` after an inductive type definition, e.g..
 ```lean 
 inductive Foo where
   ...
-  deriving Arbitrary
+  deriving Arbitrary, Eunm
 ```
-or 
-```lean 
-inductive Foo where 
-  ...
-  deriving Foo
-```
-Alternatively, users can also write `deriving instance Arbitrary for T1, ..., Tn` or `deriving instance Enum for T1, ...` as a top-level command to derive `Arbitrary` / `Enum` instances for types `T1, ..., Tn` simultaneously.
+Alternatively, users can also write `deriving instance Arbitrary for T1, ..., Tn` (or `deriving instance Enum ...`) as a top-level command to derive `Arbitrary` / `Enum` instances for types `T1, ..., Tn` simultaneously.
 
-
-To sample from a derived generator, users can simply call `runArbitrary`, specify the type 
+To sample from a derived unconstrained generator, users can simply call `runArbitrary`, specify the type 
 for the desired generated values and provide some `Nat` to act as the generator's size parameter (`10` in the example below):
 
 ```lean
@@ -49,7 +42,6 @@ Similarly, to return the elements produced form a derived enumerator, users can 
 
 **2. Deriving constrained generators** (for inductive relations)                
 A *constrained* producer only produces values that satisfy a user-specified inductive relation. 
-Constrained generators randomly sample values, while constrained enumerators enumerate them.
 
 We provide two command elaborators for deriving constrained generators/enumerators:
 
@@ -72,7 +64,7 @@ instance of the `ArbitrarySizedSuchThat` / `EnumSizedSuchThat` typeclass (along 
 #eval runSizedEnum (EnumSizedSuchThat.enumSizedST (fun t => balanced 5 t)) 3
 ```
 
-**3. Deriving checkers (partial decision procedures)** (for inductively-defined propositions)                                 
+**3. Deriving checkers (partial decision procedures)** (for inductive relations)                                 
 A checker for an inductively-defined `Prop` is a `Nat -> Option Bool` function, which 
 takes a `Nat` argument as fuel and returns `none` if it can't decide whether the `Prop` holds (e.g. it runs out of fuel),
 and otherwise returns `some true/some false` depending on whether the `Prop` holds.
@@ -80,7 +72,8 @@ and otherwise returns `some true/some false` depending on whether the `Prop` hol
 We provide a command elaborator which elaborates the `#derive_checker` command:
 
 ```lean
--- `#derive_checker` derives a checker which determines whether `Tree`s `t` satisfy the `balanced` inductive proposition mentioned above 
+-- `#derive_checker` derives a checker which determines whether `Tree`s `t` 
+-- satisfy the `balanced` inductive relation mentioned above 
 #derive_checker (balanced n t)
 ```
 
