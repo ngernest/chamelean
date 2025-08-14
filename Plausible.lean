@@ -39,3 +39,9 @@ import Plausible.Chamelean.MExp
 -- https://github.com/leanprover-community/plausible/pull/35
 import Plausible.DeriveArbitrary
 import Plausible.Arbitrary
+
+-- Chamelean examples
+import Plausible.Chamelean.Examples.ExampleInductiveRelations
+import Plausible.Chamelean.Examples.STLC
+import Plausible.Chamelean.Examples.Trees
+import Plausible.Chamelean.Examples.KeyValueStore
