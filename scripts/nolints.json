@@ -112,6 +112,7 @@
   ["docBlame", "instEnumSizedSuchThatTypeLookup.aux_enum"],
   ["docBlame", "instEnumSizedType.aux_enum"],
   ["docBlame", "instEnumSizedTerm.aux_enum"],
+  ["docBlame", "enumBalancedTree.aux_enum"],
   ["unusedArguments", "genTyping.aux_arb"],
   ["unusedArguments", "genBST.aux_arb"],
   ["unusedArguments", "genBalancedTree.aux_arb"],
@@ -120,5 +121,7 @@
   ["unusedArguments", "Plausible.RandT.up"],
   ["unusedArguments", "Plausible.RandT.down"],
   ["unusedArguments", "Plausible.NamedBinder"],
-  ["unusedArguments", "Plausible.Decorations.DecorationsOf"]
+  ["unusedArguments", "Plausible.Decorations.DecorationsOf"],
+  ["unusedArguments", "enumBalancedTree.aux_enum"],
+  ["unusedArguments", "EnumeratorCombinators.mkThunk"]
 ]

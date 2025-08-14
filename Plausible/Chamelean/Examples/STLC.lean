@@ -15,6 +15,7 @@ import Plausible.Sampleable
 open Plausible
 open OptionTGen
 open GeneratorCombinators
+open EnumeratorCombinators
 
 -------------------------------------------------------------------------
 -- Unconstrained generators
@@ -94,6 +95,7 @@ instance : EnumSizedSuchThat type (fun τ_1 => lookup Γ_1 x_1 τ_1) where
             | _ => OptionT.fail]
     fun size => aux_enum size size Γ_1 x_1
 
+
 mutual
   /-- Enumerates types `τ` such that `typing Γ e τ` holds -/
   partial def enumTyping (Γ_1 : List type) (e_1 : term) : Nat → OptionT Enumerator type :=
@@ -111,15 +113,15 @@ mutual
             | _ => OptionT.fail]
       | Nat.succ size' =>
         EnumeratorCombinators.enumerate
-          [match e_1 with
+          [mkThunk (match e_1 with
             | term.Const _ => return type.Nat
-            | _ => OptionT.fail,
-            match e_1 with
+            | _ => OptionT.fail),
+            mkThunk (match e_1 with
             | term.Var x => do
               let τ_1 ← EnumSizedSuchThat.enumSizedST (fun τ_1 => lookup Γ_1 x τ_1) initSize;
               return τ_1
-            | _ => OptionT.fail,
-            match e_1 with
+            | _ => OptionT.fail),
+            mkThunk (match e_1 with
             | term.Add e1 e2 =>
               match checkTyping Γ_1 e1 (type.Nat) size' with
               | Option.some Bool.true =>
@@ -127,13 +129,13 @@ mutual
                 | Option.some Bool.true => return type.Nat
                 | _ => OptionT.fail
               | _ => OptionT.fail
-            | _ => OptionT.fail,
-            match e_1 with
+            | _ => OptionT.fail),
+            mkThunk (match e_1 with
             | term.Abs τ1 e => do
               let τ2 ← aux_enum initSize size' (List.cons τ1 Γ_1) e;
               return type.Fun τ1 τ2
-            | _ => OptionT.fail,
-            match e_1 with
+            | _ => OptionT.fail),
+            mkThunk (match e_1 with
             | term.App e1 e2 => do
               let τ1 ← aux_enum initSize size' Γ_1 e2;
               do
@@ -141,7 +143,7 @@ mutual
                 match checkTyping Γ_1 e1 (type.Fun τ1 τ_1) size' with
                   | Option.some Bool.true => return τ_1
                   | _ => OptionT.fail
-            | _ => OptionT.fail]
+            | _ => OptionT.fail)]
 
     fun size => aux_enum size size Γ_1 e_1
 

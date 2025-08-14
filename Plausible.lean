@@ -39,3 +39,7 @@ import Plausible.Chamelean.MExp
 -- https://github.com/leanprover-community/plausible/pull/35
 import Plausible.DeriveArbitrary
 import Plausible.Arbitrary
+
+
+-- TODO: temp
+import Plausible.Chamelean.Examples.Trees

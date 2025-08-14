@@ -3,12 +3,15 @@ import Plausible.Chamelean.OptionTGen
 import Plausible.Arbitrary
 import Plausible.Chamelean.ArbitrarySizedSuchThat
 import Plausible.Chamelean.DecOpt
+import Plausible.Chamelean.Enumerators
+import Plausible.Chamelean.EnumeratorCombinators
 
 import Plausible.Gen
 open Plausible
 open OptionTGen
 
 open ArbitrarySizedSuchThat
+open EnumeratorCombinators
 
 set_option linter.missingDocs false
 
@@ -228,3 +231,38 @@ instance : DecOpt (balanced n t) where
               | _ => some false)
         ]
     fun size => aux_arb size size n t
+
+/-- A hand-written enumerator for balanced trees, where all sub-generators are thunked -/
+def enumBalancedTree (n_1 : Nat) : Nat → OptionT Enumerator Tree :=
+  let rec aux_enum (initSize : Nat) (size : Nat) (n_1 : Nat) : OptionT Enumerator Tree :=
+      match size with
+      | Nat.zero =>
+        EnumeratorCombinators.enumerateThunk
+          [mkThunk $ match n_1 with
+            | Nat.zero => return Tree.Leaf
+            | _ => OptionT.fail,
+            mkThunk $ match n_1 with
+            | Nat.succ (Nat.zero) => return Tree.Leaf
+            | _ => OptionT.fail]
+      | Nat.succ size' =>
+        EnumeratorCombinators.enumerateThunk
+          [mkThunk $ match n_1 with
+            | Nat.zero => return Tree.Leaf
+            | _ => OptionT.fail,
+            mkThunk $ match n_1 with
+            | Nat.succ (Nat.zero) => return Tree.Leaf
+            | _ => OptionT.fail,
+            mkThunk $ match n_1 with
+            | Nat.succ n => do
+              let l ← aux_enum initSize size' n;
+              do
+                let r ← aux_enum initSize size' n;
+                do
+                  let x ← Enum.enum;
+                  return Tree.Node x l r
+            | _ => OptionT.fail]
+    fun size => aux_enum size size n_1
+
+-- Changing size to `3` or any larger `Nat` causes stack overflow
+-- def size := 2
+-- #eval runSizedEnum (enumBalancedTree 2) size

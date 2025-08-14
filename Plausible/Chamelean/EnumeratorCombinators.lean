@@ -8,11 +8,14 @@ open LazyList
 
 namespace EnumeratorCombinators
 
-/-- `pickDrop xs n` and returns the `n`-th enumerator from the list `xs`,
-    and returns the tail of the list from the `n+1`-th element onwards
-    - Note: this is a variant of `OptionTGen.pickDrop` where the input list does not contain weights
-      (enumerators don't have weights attached to them, unlike generators) -/
-def pickDrop (xs : List (OptionT Enumerator α)) (n : Nat) : OptionT Enumerator α × List (OptionT Enumerator α) :=
+/-- `pickDrop xs n` returns the `n`-th monadic element from the list `xs`,
+    and returns the tail of the list from the `n+1`-th element onwards.
+
+    Note: this is a variant of `OptionTGen.pickDrop` with 2 differences:
+    1. The input list does not contain weights
+      (enumerators don't have weights attached to them, unlike generators
+    2. We are polymorphic over any `Monad m` -/
+def pickDrop [Monad m] (xs : List (OptionT m α)) (n : Nat) : (OptionT m α) × List (OptionT m α) :=
   match xs with
   | [] => (OptionT.fail, [])
   | x :: xs =>
@@ -71,5 +74,35 @@ def enumerating (e : Enumerator α) (f : α → Option Bool) (size : Nat) : Opti
     - This corresponds to `bind_EC` in the Computing Correctly paper (section 4) -/
 def enumeratingOpt (e : OptionT Enumerator α) (f : α → Option Bool) (size : Nat) : Option Bool :=
   lazyListBacktrackOpt (e size) f false
+
+/-- Delays the evaluation of some monadic computation by taking in a function `f : Unit → Gen α` -/
+def mkThunk [Monad m] (ma : m α) : Unit → m α :=
+  fun _ => ma
+
+/-- Variant of `pickDrop` which works over thunked sub-enumerators -/
+def pickDropThunk [Monad m] (xs : List (Unit → OptionT m α)) (n : Nat) : (Unit → OptionT m α) × List (Unit → OptionT m α) :=
+  match xs with
+  | [] => (fun _ => OptionT.fail, [])
+  | x :: xs =>
+    match n with
+    | .zero => (x, xs)
+    | .succ n' =>
+      let (x', xs') := pickDropThunk xs n'
+      (x', x::xs')
+
+/-- Variant of `enumerateFuel` which works over thunked sub-enumerators -/
+def enumerateFuelThunk (fuel : Nat) (total : Nat) (es : List (Unit → OptionT Enumerator α)) : OptionT Enumerator α :=
+  match fuel with
+  | .zero => OptionT.fail
+  | .succ fuel' => do
+    let n ← monadLift $ enumNatRange 0 (total - 1)
+    let (e, es') := pickDropThunk es n
+    -- Try to enumerate a value using `e`, if it fails, backtrack with `fuel'`
+    -- and pick one out of the `total - k` remaining enumerators
+    OptionT.tryCatch (e ()) (fun _ => enumerateFuelThunk fuel' (total - n) es')
+
+/-- Variant of `enumerate` which works over thunked sub-enumerators -/
+def enumerateThunk (es : List (Unit → OptionT Enumerator α)) : OptionT Enumerator α :=
+  enumerateFuelThunk (fuel := min es.length 10) (total := es.length) es
 
 end EnumeratorCombinators
