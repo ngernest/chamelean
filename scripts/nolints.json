@@ -112,6 +112,14 @@
   ["docBlame", "instEnumSizedSuchThatTypeLookup.aux_enum"],
   ["docBlame", "instEnumSizedType.aux_enum"],
   ["docBlame", "instEnumSizedTerm.aux_enum"],
+  ["docBlame", "KeyValueStore.instArbitrarySizedSuchThatListProdStringRemoveKV.aux_arb"],
+  ["docBlame", "KeyValueStore.instArbitrarySizedSuchThatListProdStringRemoveKV_1.aux_arb"],
+  ["docBlame", "KeyValueStore.instArbitrarySizedSuchThatListProdStringAddKV.aux_arb"],
+  ["docBlame", "KeyValueStore.instArbitrarySizedSuchThatListProdStringAddKV_1.aux_arb"],
+  ["docBlame", "KeyValueStore.instDecOptLookupKV.aux_dec"],
+  ["docBlame", "KeyValueStore.instArbitrarySizedSuchThatListProdStringLookupKV.aux_arb"],
+  ["docBlame", "KeyValueStore.instDecOptAddKV.aux_dec"],
+  ["docBlame", "KeyValueStore.instArbitrarySizedSuchThatListProdStringEvalStateApiCall.aux_arb"],
   ["unusedArguments", "genTyping.aux_arb"],
   ["unusedArguments", "genBST.aux_arb"],
   ["unusedArguments", "genBalancedTree.aux_arb"],
@@ -120,5 +128,6 @@
   ["unusedArguments", "Plausible.RandT.up"],
   ["unusedArguments", "Plausible.RandT.down"],
   ["unusedArguments", "Plausible.NamedBinder"],
-  ["unusedArguments", "Plausible.Decorations.DecorationsOf"]
+  ["unusedArguments", "Plausible.Decorations.DecorationsOf"],
+  ["unusedArguments", "KeyValueStore.instArbitrarySizedSuchThatListProdStringAddKV_1.aux_arb"]
 ]

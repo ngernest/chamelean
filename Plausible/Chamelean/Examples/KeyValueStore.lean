@@ -363,6 +363,93 @@ info: Try this generator: instance : ArbitrarySizedSuchThat (List (String × Str
 #guard_msgs(info, drop warning) in
 #derive_generator (fun (s2 : List (String × String)) => KeyValueStore.AddKV k v s1 s2)
 
+/--
+info: Try this checker: instance : DecOpt (KeyValueStore.LookupKV s_1 kv_1) where
+  decOpt :=
+    let rec aux_dec (initSize : Nat) (size : Nat) (s_1 : List (String × String))
+      (kv_1 : StateResult × String × Nat × String) : Option Bool :=
+      match size with
+      | Nat.zero =>
+        DecOpt.checkerBacktrack
+          [fun _ =>
+            match kv_1 with
+            | Prod.mk (KeyValueStore.StateResult.NoSuchKeyFailure) (Prod.mk k (Prod.mk (Nat.zero) v)) =>
+              match s_1 with
+              | List.nil => Option.some Bool.true
+              | _ => Option.some Bool.false
+            | _ => Option.some Bool.false,
+            fun _ =>
+            match kv_1 with
+            | Prod.mk (KeyValueStore.StateResult.Ok) (Prod.mk u_2 (Prod.mk (Nat.zero) u_3)) =>
+              match s_1 with
+              | List.cons (Prod.mk k v) s =>
+                DecOpt.andOptList [DecOpt.decOpt (BEq.beq u_2 k) initSize, DecOpt.decOpt (BEq.beq u_3 v) initSize]
+              | _ => Option.some Bool.false
+            | _ => Option.some Bool.false,
+            fun _ =>
+            match kv_1 with
+            | Prod.mk (KeyValueStore.StateResult.NoSuchVersionFailure) (Prod.mk u_2 (Prod.mk (Nat.succ n) u_3)) =>
+              match s_1 with
+              | List.cons (Prod.mk k v) (List.nil) =>
+                DecOpt.andOptList [DecOpt.decOpt (BEq.beq u_2 k) initSize, DecOpt.decOpt (BEq.beq u_3 v) initSize]
+              | _ => Option.some Bool.false
+            | _ => Option.some Bool.false]
+      | Nat.succ size' =>
+        DecOpt.checkerBacktrack
+          [fun _ =>
+            match kv_1 with
+            | Prod.mk (KeyValueStore.StateResult.NoSuchKeyFailure) (Prod.mk k (Prod.mk (Nat.zero) v)) =>
+              match s_1 with
+              | List.nil => Option.some Bool.true
+              | _ => Option.some Bool.false
+            | _ => Option.some Bool.false,
+            fun _ =>
+            match kv_1 with
+            | Prod.mk (KeyValueStore.StateResult.Ok) (Prod.mk u_2 (Prod.mk (Nat.zero) u_3)) =>
+              match s_1 with
+              | List.cons (Prod.mk k v) s =>
+                DecOpt.andOptList [DecOpt.decOpt (BEq.beq u_2 k) initSize, DecOpt.decOpt (BEq.beq u_3 v) initSize]
+              | _ => Option.some Bool.false
+            | _ => Option.some Bool.false,
+            fun _ =>
+            match kv_1 with
+            | Prod.mk (KeyValueStore.StateResult.NoSuchVersionFailure) (Prod.mk u_2 (Prod.mk (Nat.succ n) u_3)) =>
+              match s_1 with
+              | List.cons (Prod.mk k v) (List.nil) =>
+                DecOpt.andOptList [DecOpt.decOpt (BEq.beq u_2 k) initSize, DecOpt.decOpt (BEq.beq u_3 v) initSize]
+              | _ => Option.some Bool.false
+            | _ => Option.some Bool.false,
+            fun _ =>
+            match kv_1 with
+            | Prod.mk (KeyValueStore.StateResult.Ok) (Prod.mk k1 (Prod.mk n' v1)) =>
+              match s_1 with
+              | List.cons (Prod.mk k2 v2) s =>
+                EnumeratorCombinators.enumerating Enum.enum
+                  (fun n =>
+                    DecOpt.andOptList
+                      [aux_dec initSize size' s (Prod.mk (KeyValueStore.StateResult.Ok) (Prod.mk k1 (Prod.mk n v1))),
+                        DecOpt.decOpt (Eq n' (KeyValueStore.ver k1 k2 n)) initSize])
+                  (min 2 initSize)
+              | _ => Option.some Bool.false
+            | _ => Option.some Bool.false,
+            fun _ =>
+            match kv_1 with
+            | Prod.mk (KeyValueStore.StateResult.NoSuchVersionFailure) (Prod.mk k1 (Prod.mk n' v1)) =>
+              match s_1 with
+              | List.cons (Prod.mk k2 v2) s =>
+                EnumeratorCombinators.enumerating Enum.enum
+                  (fun n =>
+                    DecOpt.andOptList
+                      [aux_dec initSize size' s
+                          (Prod.mk (KeyValueStore.StateResult.NoSuchVersionFailure) (Prod.mk k1 (Prod.mk n v1))),
+                        DecOpt.decOpt (Eq n' (KeyValueStore.ver k1 k2 n)) initSize])
+                  (min 2 initSize)
+              | _ => Option.some Bool.false
+            | _ => Option.some Bool.false]
+    fun size => aux_dec size size s_1 kv_1
+-/
+#guard_msgs(info, drop warning) in
+#derive_checker (KeyValueStore.LookupKV s kv)
 
 /--
 info: Try this generator: instance : ArbitrarySizedSuchThat (List (String × String)) (fun s1_1 => KeyValueStore.LookupKV s1_1 kv_1) where
@@ -480,92 +567,6 @@ info: Try this checker: instance : DecOpt (KeyValueStore.AddKV k2_1 v_1 s_1_1 s2
 -/
 #guard_msgs(info, drop warning) in
 #derive_checker (KeyValueStore.AddKV k2 v s_1 s2)
-
-/--
-info: Try this checker: instance : DecOpt (KeyValueStore.LookupKV s_1 kv_1) where
-  decOpt :=
-    let rec aux_dec (initSize : Nat) (size : Nat) (s_1 : List (String × String))
-      (kv_1 : StateResult × String × Nat × String) : Option Bool :=
-      match size with
-      | Nat.zero =>
-        DecOpt.checkerBacktrack
-          [fun _ =>
-            match kv_1 with
-            | Prod.mk (KeyValueStore.StateResult.NoSuchKeyFailure) (Prod.mk k (Prod.mk (Nat.zero) v)) =>
-              match s_1 with
-              | List.nil => Option.some Bool.true
-              | _ => Option.some Bool.false
-            | _ => Option.some Bool.false,
-            fun _ =>
-            match kv_1 with
-            | Prod.mk (KeyValueStore.StateResult.Ok) (Prod.mk u_2 (Prod.mk (Nat.zero) u_3)) =>
-              match s_1 with
-              | List.cons (Prod.mk k v) s =>
-                DecOpt.andOptList [DecOpt.decOpt (BEq.beq u_2 k) initSize, DecOpt.decOpt (BEq.beq u_3 v) initSize]
-              | _ => Option.some Bool.false
-            | _ => Option.some Bool.false,
-            fun _ =>
-            match kv_1 with
-            | Prod.mk (KeyValueStore.StateResult.NoSuchVersionFailure) (Prod.mk u_2 (Prod.mk (Nat.succ n) u_3)) =>
-              match s_1 with
-              | List.cons (Prod.mk k v) (List.nil) =>
-                DecOpt.andOptList [DecOpt.decOpt (BEq.beq u_2 k) initSize, DecOpt.decOpt (BEq.beq u_3 v) initSize]
-              | _ => Option.some Bool.false
-            | _ => Option.some Bool.false]
-      | Nat.succ size' =>
-        DecOpt.checkerBacktrack
-          [fun _ =>
-            match kv_1 with
-            | Prod.mk (KeyValueStore.StateResult.NoSuchKeyFailure) (Prod.mk k (Prod.mk (Nat.zero) v)) =>
-              match s_1 with
-              | List.nil => Option.some Bool.true
-              | _ => Option.some Bool.false
-            | _ => Option.some Bool.false,
-            fun _ =>
-            match kv_1 with
-            | Prod.mk (KeyValueStore.StateResult.Ok) (Prod.mk u_2 (Prod.mk (Nat.zero) u_3)) =>
-              match s_1 with
-              | List.cons (Prod.mk k v) s =>
-                DecOpt.andOptList [DecOpt.decOpt (BEq.beq u_2 k) initSize, DecOpt.decOpt (BEq.beq u_3 v) initSize]
-              | _ => Option.some Bool.false
-            | _ => Option.some Bool.false,
-            fun _ =>
-            match kv_1 with
-            | Prod.mk (KeyValueStore.StateResult.NoSuchVersionFailure) (Prod.mk u_2 (Prod.mk (Nat.succ n) u_3)) =>
-              match s_1 with
-              | List.cons (Prod.mk k v) (List.nil) =>
-                DecOpt.andOptList [DecOpt.decOpt (BEq.beq u_2 k) initSize, DecOpt.decOpt (BEq.beq u_3 v) initSize]
-              | _ => Option.some Bool.false
-            | _ => Option.some Bool.false,
-            fun _ =>
-            match kv_1 with
-            | Prod.mk (KeyValueStore.StateResult.Ok) (Prod.mk k1 (Prod.mk n' v1)) =>
-              match s_1 with
-              | List.cons (Prod.mk k2 v2) s =>
-                EnumeratorCombinators.enumerating Enum.enum
-                  (DecOpt.andOptList
-                    [aux_dec initSize size' s (Prod.mk (KeyValueStore.StateResult.Ok) (Prod.mk k1 (Prod.mk n v1))),
-                      DecOpt.decOpt (Eq n' (KeyValueStore.ver k1 k2 n)) initSize])
-                  initSize
-              | _ => Option.some Bool.false
-            | _ => Option.some Bool.false,
-            fun _ =>
-            match kv_1 with
-            | Prod.mk (KeyValueStore.StateResult.NoSuchVersionFailure) (Prod.mk k1 (Prod.mk n' v1)) =>
-              match s_1 with
-              | List.cons (Prod.mk k2 v2) s =>
-                EnumeratorCombinators.enumerating Enum.enum
-                  (DecOpt.andOptList
-                    [aux_dec initSize size' s
-                        (Prod.mk (KeyValueStore.StateResult.NoSuchVersionFailure) (Prod.mk k1 (Prod.mk n v1))),
-                      DecOpt.decOpt (Eq n' (KeyValueStore.ver k1 k2 n)) initSize])
-                  initSize
-              | _ => Option.some Bool.false
-            | _ => Option.some Bool.false]
-    fun size => aux_dec size size s_1 kv_1
--/
-#guard_msgs(info, drop warning) in
-#derive_checker (KeyValueStore.LookupKV s kv)
 
 /--
 info: Try this generator: instance : ArbitrarySizedSuchThat (List (String × String)) (fun s_1 => KeyValueStore.EvalStateApiCall s_1 x_1) where
