@@ -26,6 +26,12 @@ inductive MonadSort
   | Checker
   deriving Repr, BEq
 
+/-- Determines whether a `MonadSort` corresponds to a monad
+    for an enumerator (i.e. `Enumerator` or `OptionT Enumerator`) -/
+def MonadSort.isEnumerator : MonadSort → Bool
+  | .Enumerator | .OptionTEnumerator => true
+  | _ => false
+
 /-- An intermediate representation of monadic expressions that are
     used in generators/enumerators/checkers.
     - Schedules are compiled to `MExp`s, which are then compiled to Lean code
@@ -288,10 +294,7 @@ mutual
         else
           -- For checkers, we can just invoke `DecOpt.andOptList`
           `($andOptListFn [$m1:term, $k1:term])
-      | .Checker, .Enumerator =>
-        -- If a checker invokes an unconstrained enumerator,
-        -- we call `EnumeratorCombinators.enumerating`
-        `($enumeratingFn $m1:term $k1:term $initSizeIdent)
+      | .Checker, .Enumerator
       | .Checker, .OptionTEnumerator => do
           -- If there are multiple variables that are bound to the result
           -- of the enumerator `m`, convert them to a tuple
@@ -300,10 +303,19 @@ mutual
               throwError m!"empty list of vars supplied to MBind, deriveSort = {repr deriveSort}, monadSort = {repr monadSort}, m1 = {m1}, k1 = {k1}"
             else
               mkTuple vars
-          -- If a checker invokes a contrained enumerator,
-          -- we call `EnumeratorCombinators.enumeratingOpt`.
           -- We pass in `(min 2 initSize)` as the amount of fuel for the enumerator to avoid stack-overflow
-          `($enumeratingOptFn $m1:term (fun $args:term => $k1:term) ($(mkIdent `min) 2 $initSizeIdent))
+          -- See https://github.com/ngernest/chamelean/issues/40 for details
+          let fuelForEnumerator ← `($(mkIdent `min) 2 $initSizeIdent)
+          match monadSort with
+          | .Enumerator =>
+            -- If a checker invokes an unconstrained enumerator,
+            -- we call `EnumeratorCombinators.enumerating` a la QuickChick
+            `($enumeratingFn $m1:term (fun $args:term => $k1:term) $fuelForEnumerator:term)
+          | .OptionTEnumerator =>
+            -- If a checker invokes a contrained enumerator,
+            -- we call `EnumeratorCombinators.enumeratingOpt` a la QuickChick
+            `($enumeratingOptFn $m1:term (fun $args:term => $k1:term) $fuelForEnumerator:term)
+          | .(_) => throwError "Unreachable pattern match: Checkers can only invoke enumerators in this branch"
       | .Theorem, _ => throwError "Theorem DeriveSort not implemented yet"
       | _, _ => throwError m!"Invalid monadic bind for deriveSort {repr deriveSort}"
     | .MMatch scrutinee cases => do

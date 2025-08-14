@@ -353,22 +353,25 @@ namespace UnifyM
             for range in rs do
               fixRange `unusedParameter range
 
-  /-- `findCanonicalUnknown k u` finds the *canonical* representation of the unknown `u` based on the `ConstraintMap` `k`.
+  /--`findCanonicalUnknown k u` finds the *canonical* representation of the unknown `u` based on the `ConstraintMap` `k`.
       Specifically:
-      - If `u ↦ Unknown u'` in `k`, then we recursively look up the canonical rerpesentation of `u'` by traversing
+      - If `u ↦ Unknown u'` in `k`, then we recursively look up the canonical representation of `u'` by traversing
         the unification graph formed by the `constraints` map in `UnifyState`
       - If `u ↦ r` (where `r` is any `Range` that is not some `Unknown`), then `u` is its own canonical representation
+      - If `u ∉ k`, then we just return `u` as is.
       - This function is used to handle cases in `constraints` where an unknown maps to another unknown.
       - Note: this function corresponds to `correct_var` in the QuickChick code.  -/
-  partial def findCanonicalUnknown (k : UnknownMap) (u : Unknown) : UnifyM Unknown := do
-    let r ← findCorrespondingRange k u
-    match r with
-    | .Unknown u' => findCanonicalUnknown k u'
-    | _ => return u
+  partial def findCanonicalUnknown (k : UnknownMap) (u : Unknown) : UnifyM Unknown :=
+    try (do
+      let r ← UnifyM.findCorrespondingRange k u
+      match r with
+      | .Unknown u' => findCanonicalUnknown k u'
+      | _ => return u)
+  catch _ => return u
 
   /-- `updateConstructorArg k ctorArg` uses the `UnknownMap` `k` to rewrite any unknowns that appear in the
       `ConstructorExpr` `ctorArg`, substituting each `Unknown` with its canonical representation
-      (determined by calling `findCanonicalUnknown`)
+      (determined by calling `updateUnknown`)
       - See `updateHypothesesWithUnificationResult` for an example of how this function is used.
       - Note: this function corresponds to `correct_rocq_constr` in the QuickChick code. -/
   partial def updateConstructorArg (k : UnknownMap) (ctorArg : ConstructorExpr) : UnifyM ConstructorExpr := do
@@ -385,7 +388,7 @@ namespace UnifyM
 
   /-- `updatePattern k p` uses the `UnknownMap` `k` to rewrite any unknowns that appear in the
       `Pattern` `p`, substituting each `Unknown` with its canonical representation
-      (determined by calling `findCanonicalUnknown`)
+      (determined by calling `updateUnknown`)
     - Note: this function corresponds to `correct_pat` in the QuickChick code -/
   partial def updatePattern (k : UnknownMap) (p : Pattern) : UnifyM Pattern := do
     match p with
