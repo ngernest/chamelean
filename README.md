@@ -117,13 +117,82 @@ We provide a command elaborator which elaborates the `#derive_checker` command:
 - [`Idents.lean`](./Plausible/Chamelean/Idents.lean): Utilities for dealing with identifiers / producing fresh names 
 - [`Utils.lean`](./Plausible/Chamelean/Utils.lean): Other miscellaneous utils
 
-**Examples**:
+**Tests & Examples**:
 - [`ExampleInductiveRelations.lean`](./Plausible/Chamelean/Examples/ExampleInductiveRelations.lean): Some example inductive relations (BSTs, balanced trees, STLC)
-- [`STLC.lean`](./Plausible/Chamelean/Examples/STLC.lean): Example hand-written checkers & generators for well-typed STLC terms
-- [`Trees.lean`](./Plausible/Chamelean/Examples/Trees.lean): Example hand-written checkers & generators for balanced trees & BSTs
 - [`DeriveRegExpGenerator.lean`](./Test/DeriveArbitrary/DeriveRegExpGenerator.lean): Example generators for regular expressions
 
-**Tests**:      
+### Tests
+**Overview of snapshot test corpus**:
 - The [`Test`](./Test/) subdirectory contains [snapshot tests](https://www.cs.cornell.edu/~asampson/blog/turnt.html) (aka [expect tests](https://blog.janestreet.com/the-joy-of-expect-tests/)) for the `#derive_generator` & `#derive_arbitrary` command elaborators. 
 - Run `lake test` to check that the derived generators in [`Test`](./Test/) typecheck, and that the code for the derived generators match the expected output.
 - See [`DeriveBSTGenerator.lean`](./Test/DeriveArbitrarySuchThat/DeriveBSTGenerator.lean) & [`DeriveBalancedTreeGenerator.lean`](./Test/DeriveArbitrarySuchThat/DeriveBalancedTreeGenerator.lean) for examples of snapshot tests. Follow the template in these two files to add new snapshot test file, and remember to import the new test file in [`Test.lean`](./Test.lean) afterwards.
+
+**Common Definitions**:
+- [`BinaryTree.lean`](./Test/CommonDefinitions/BinaryTree.lean): Binary tree datatype with BST (Binary Search Tree) and `Between` relations
+- [`FunctionCallInConclusion.lean`](./Test/CommonDefinitions/FunctionCallInConclusion.lean): Example inductive relation with function calls in constructor conclusions (`square_of`)
+- [`ListRelations.lean`](./Test/CommonDefinitions/ListRelations.lean): Various inductive relations over lists (`InList`, `MinOk`, `MinEx`, etc.)
+- [`Permutation.lean`](./Test/CommonDefinitions/Permutation.lean): Inductive relation for list permutations
+- [`STLCDefinitions.lean`](./Test/CommonDefinitions/STLCDefinitions.lean): Simply-Typed Lambda Calculus definitions including types, terms, typing judgments, and lookup relations
+
+**Key Value Store Example**:
+- [`KeyValueStore.lean`](./Test/KeyValueStoreExample/KeyValueStore.lean): Definitions for a hypothetical key-value store, in which inductive types are used to encode API calls and K/V states, and inductive relations are used to define API call semantics
+- [`TestKeyValueStoreCheckerGenerators.lean`](./Test/KeyValueStoreExample/TestKeyValueStoreCheckerGenerators.lean): The derived checkers & generators for the K/V store example (in particular, the derived generator produces well-formed sequences of API calls)
+
+**Tests for Unconstrained Generators (`#derive_arbitrary`)**:
+- [`BitVecStructureTest.lean`](./Test/DeriveArbitrary/BitVecStructureTest.lean): Tests for structures with dependently-typed `BitVec` arguments
+- [`DeriveNKIBinopGenerator.lean`](./Test/DeriveArbitrary/DeriveNKIBinopGenerator.lean): Generator derivation for NKI binary operators (logical, comparison, arithmetic, bitwise)
+- [`DeriveNKIValueGenerator.lean`](./Test/DeriveArbitrary/DeriveNKIValueGenerator.lean): Generator derivation for NKI value types (none, bool, int, string, tensor, etc.)
+- [`DeriveRegExpGenerator.lean`](./Test/DeriveArbitrary/DeriveRegExpGenerator.lean): Generator derivation for regular expressions with counterexample testing
+- [`DeriveSTLCTermTypeGenerators.lean`](./Test/DeriveArbitrary/DeriveSTLCTermTypeGenerators.lean): Generator derivation for STLC types and terms
+- [`DeriveTreeGenerator.lean`](./Test/DeriveArbitrary/DeriveTreeGenerator.lean): Generator derivation for binary trees with mirror property testing
+- [`MissingNonRecursiveConstructorTest.lean`](./Test/DeriveArbitrary/MissingNonRecursiveConstructorTest.lean): Error handling test for types without non-recursive constructors
+- [`MutuallyRecursiveTypeTest.lean`](./Test/DeriveArbitrary/MutuallyRecursiveTypeTest.lean): Generator derivation for mutually recursive inductive types
+- [`ParameterizedTypeTest.lean`](./Test/DeriveArbitrary/ParameterizedTypeTest.lean): Generator derivation for parameterized types (polymorphic `MyList`)
+- [`StructureTest.lean`](./Test/DeriveArbitrary/StructureTest.lean): Generator derivation for structures with named fields
+
+**Tests for Constrained Generators (`#derive_generator`)**:
+- [`DeriveBSTGenerator.lean`](./Test/DeriveArbitrarySuchThat/DeriveBSTGenerator.lean): Derived generator for Binary Search Trees (with a BST insertion property-based test)
+- [`DeriveBalancedTreeGenerator.lean`](./Test/DeriveArbitrarySuchThat/DeriveBalancedTreeGenerator.lean): Derived generator for balanced binary trees
+- [`DerivePermutationGenerator.lean`](./Test/DeriveArbitrarySuchThat/DerivePermutationGenerator.lean): Derived generator for list permutations
+- [`DeriveRegExpMatchGenerator.lean`](./Test/DeriveArbitrarySuchThat/DeriveRegExpMatchGenerator.lean): Derived generator for strings matching regular expressions
+- [`DeriveSTLCGenerator.lean`](./Test/DeriveArbitrarySuchThat/DeriveSTLCGenerator.lean): Derived generator for well-typed STLC terms
+- [`FunctionCallsTest.lean`](./Test/DeriveArbitrarySuchThat/FunctionCallsTest.lean): Tests handling inductive relations with function calls in conclusions
+- [`MutuallyRecursiveRelationsTest.lean`](./Test/DeriveArbitrarySuchThat/MutuallyRecursiveRelationsTest.lean): Tests for mutually recursive inductive relations (`Even`/`Odd`)
+- [`NonLinearPatternsTest.lean`](./Test/DeriveArbitrarySuchThat/NonLinearPatternsTest.lean): Tests for relations with non-linear patterns (repeated variables)
+- [`SimultaneousMatchingTests.lean`](./Test/DeriveArbitrarySuchThat/SimultaneousMatchingTests.lean): Tests for relations with simultaneous pattern matching on multiple inputs
+
+**Tests for Checkers (`#derive_checker`)**:
+- [`DeriveBSTChecker.lean`](./Test/DeriveDecOpt/DeriveBSTChecker.lean): derived checker for BSTs
+- [`DeriveBalancedTreeChecker.lean`](./Test/DeriveDecOpt/DeriveBalancedTreeChecker.lean): derived checker for balanced trees
+- [`DerivePermutationChecker.lean`](./Test/DeriveDecOpt/DerivePermutationChecker.lean): derived checker for list permutations
+- [`DeriveRegExpMatchChecker.lean`](./Test/DeriveDecOpt/DeriveRegExpMatchChecker.lean): derived checker for strings matching regular expression patterns
+- [`DeriveSTLCChecker.lean`](./Test/DeriveDecOpt/DeriveSTLCChecker.lean): derived STLC type-checker
+- [`ExistentialVariablesTest.lean`](./Test/DeriveDecOpt/ExistentialVariablesTest.lean): Tests for relations with existentially quantified variables
+- [`FunctionCallsTest.lean`](./Test/DeriveDecOpt/FunctionCallsTest.lean): Tests for derived checker with function calls in the conclusion of constructors 
+- [`NonLinearPatternsTest.lean`](./Test/DeriveDecOpt/NonLinearPatternsTest.lean): Tests for derived checker with non-linear patterns
+- [`SimultaneousMatchingTests.lean`](./Test/DeriveDecOpt/SimultaneousMatchingTests.lean): Tests for derived checker with simultaneous matching
+
+**Tests for Unconstrained Enumerators (`#derive_enum`)**:
+- [`BitVecStructureTest.lean`](./Test/DeriveEnum/BitVecStructureTest.lean): Enumerator derivation for structures with `BitVec` arguments
+- [`DeriveNKIBinopEnumerator.lean`](./Test/DeriveEnum/DeriveNKIBinopEnumerator.lean): Enumerator derivation for NKI binary operators
+- [`DeriveNKIValueEnumerator.lean`](./Test/DeriveEnum/DeriveNKIValueEnumerator.lean): Enumerator derivation for NKI value types
+- [`DeriveRegExpEnumerator.lean`](./Test/DeriveEnum/DeriveRegExpEnumerator.lean): Enumerator derivation for regular expressions
+- [`DeriveSTLCTermTypeEnumerators.lean`](./Test/DeriveEnum/DeriveSTLCTermTypeEnumerators.lean): Enumerator derivation for STLC types and terms
+- [`DeriveTreeEnumerator.lean`](./Test/DeriveEnum/DeriveTreeEnumerator.lean): Enumerator derivation for binary trees
+- [`StructureTest.lean`](./Test/DeriveEnum/StructureTest.lean): Enumerator derivation for structures with named fields
+
+**Tests for Constrained Enumerators (`#derive_enumerator`)**:
+- [`DeriveBSTEnumerator.lean`](./Test/DeriveEnumSuchThat/DeriveBSTEnumerator.lean): Constrained enumerators for Binary Search Trees
+- [`DeriveBalancedTreeEnumerator.lean`](./Test/DeriveEnumSuchThat/DeriveBalancedTreeEnumerator.lean): Constrained enumerators for balanced trees
+- [`DerivePermutationEnumerator.lean`](./Test/DeriveEnumSuchThat/DerivePermutationEnumerator.lean): Constrained enumerators for permutations
+- [`DeriveRegExpMatchEnumerator.lean`](./Test/DeriveEnumSuchThat/DeriveRegExpMatchEnumerator.lean): Constrained enumerators for regex matching
+- [`DeriveSTLCEnumerator.lean`](./Test/DeriveEnumSuchThat/DeriveSTLCEnumerator.lean): Constrained enumerators for well-typed STLC terms
+- [`NonLinearPatternsTest.lean`](./Test/DeriveEnumSuchThat/NonLinearPatternsTest.lean): Tests for enumerator derivation with non-linear patterns
+- [`SimultaneousMatchingTests.lean`](./Test/DeriveEnumSuchThat/SimultaneousMatchingTests.lean): Tests for enumerator derivation with simultaneous matching
+
+**Enumerator Infrastructure Tests**:
+- [`EnumInstancesTest.lean`](./Test/Enum/EnumInstancesTest.lean): Tests for basic enumerator instances on Nat, Bool, pairs, sums, lists, etc.
+
+**Plausible Tests**:
+- [`Tactic.lean`](./Test/Tactic.lean): Tests the `plausible` tactic on core Lean types
+- [`Testable.lean`](./Test/Testable.lean): Tests for the `Testable` typeclass infrastructure with custom types
