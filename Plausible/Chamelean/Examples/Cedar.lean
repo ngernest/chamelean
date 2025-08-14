@@ -12,7 +12,7 @@ inductive EntityUID where
 | MkEntityUID : EntityName → String → EntityUID
 deriving Repr, DecidableEq
 
-/-- Primitive Types -/
+/-- Primitive values -/
 inductive Prim where
 | boolean (b : Bool)
 | int (i : Int)
@@ -109,7 +109,7 @@ instance : ToString EntityUID where
     match b with
     | EntityUID.MkEntityUID (.MkName t p) id => stringOfEntityUID p t id
 
-/-- Converts a primitive type to a string -/
+/-- Converts a primitive to a string -/
 def stringOfPrim (p : Prim) : String :=
   match p with
   | Prim.boolean b => toString b
@@ -218,3 +218,57 @@ def sizeExpr (e : Expr) : Nat :=
   | Expr.setExprCons e ls => 1 + sizeExpr e + sizeExpr ls
   | Expr.recExprNil => 1
   | Expr.recExprCons _ e attrs => 1 + sizeExpr e + sizeExpr attrs
+
+
+---------------------------------------
+-- Part Three: Cedar expression typing
+---------------------------------------
+-- Some basic predicates useful for typing
+
+/-- predicate: When an expression is a record -/
+inductive RecordExpr : Expr → Prop where
+| RENil : RecordExpr Expr.recExprNil
+| RECons : ∀ fn e r, RecordExpr (Expr.recExprCons fn e r)
+
+/-- predicate: When an expression is a set -/
+inductive SetExpr : Expr → Prop where
+| SENil : SetExpr Expr.setExprNil
+| SECons : ∀ e r, SetExpr (Expr.setExprCons e r)
+
+/-- predicate: When an expression is a value -/
+inductive Value : Expr → Prop where
+| VLit : ∀ p, Value (Expr.lit p)
+| VSNil : Value Expr.setExprNil
+| VSCons : ∀ e ls, Value e → Value ls → Value (Expr.setExprCons e ls)
+| VRNil : Value Expr.recExprNil
+| VRCons : ∀ s e rs, Value e → Value rs → Value (Expr.recExprCons s e rs)
+
+/-- predicate: When an expression is a set of entity values -/
+inductive SetEntityValues : Expr → Prop where
+| SEVNil : SetEntityValues Expr.setExprNil
+| SEVCons : ∀ uid r,
+    SetEntityValues r →
+    SetEntityValues (Expr.setExprCons (Expr.lit (Prim.entityUID uid)) r)
+
+-- Types
+
+inductive BoolType where
+| anyBool
+| tt
+| ff
+deriving Repr, DecidableEq
+
+inductive CedarType where
+| boolType (bty : BoolType)
+| intType
+| stringType
+| entityType (ety : EntityName)
+| setType (ty : CedarType)
+| recordTypeNil
+| recordTypeCons (s : String) (opt : Bool) (ty : CedarType) (rest : CedarType)
+deriving Repr, DecidableEq
+
+/-- Determines whether a `CedarType` is a `RecordType` -/
+inductive RecordType : CedarType → Prop where
+| RTNil : RecordType CedarType.recordTypeNil
+| RTCons : ∀ fn o T1 T2, RecordType (CedarType.recordTypeCons fn o T1 T2)

@@ -23,6 +23,11 @@ instance : Arbitrary String where
 -- We need to manually add these `ArbitrarySizedSuchThat` instances for equality propositions
 -- in order for the derived generators below to compile.
 
+-- TODO: investigate whether we can just do this (for `f` of higher arities) in order to automate
+-- the creation of the instances below
+instance {α : Type} {β : Type} {f : α → β} [BEq β] {a : α} : ArbitrarySizedSuchThat β (fun x => x = f a) where
+  arbitrarySizedST _ := return f a
+
 instance : ArbitrarySizedSuchThat Nat (fun n' => n' = ver k1 k2 n) where
   arbitrarySizedST (_ : Nat) := return ver k1 k2 n
 
