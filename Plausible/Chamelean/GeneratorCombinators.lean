@@ -49,4 +49,18 @@ def sized (f : Nat → Gen α) : Gen α :=
 def thunkGen (f : Unit → Gen α) : Gen α :=
   f ()
 
+/-- `elementsWithDefault` constructs a generator from a list `xs` and a `default` element.
+    If `xs` is non-empty, the generator picks an element from `xs` uniformly; otherwise it returns the `default` element.
+
+    Remarks:
+    - this is a version of Plausible's `Gen.elements` where the caller doesn't have
+      to supply a proof that the list index is in bounds
+    - This is a version of QuickChick's `elems_` combinator -/
+def elementsWithDefault [Inhabited α] (default : α) (xs : List α) : Gen α :=
+  match xs with
+  | [] => return default
+  | _ => do
+    let i ← Subtype.val <$> Gen.choose Nat 0 xs.length (by omega)
+    return xs[i]!
+
 end GeneratorCombinators
