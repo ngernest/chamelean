@@ -462,6 +462,8 @@ def getScheduleForInductiveRelationConstructor (inductiveName : Name) (ctorName 
       -- A *naive* schedule is the first schedule contained in `possibleSchedules`
       let originalNaiveSchedule ← Option.getDM (possibleSchedules.head?) (throwError m!"Unable to compute any possible schedules")
 
+      logWarning m!"originalNaiveSchedule = {repr originalNaiveSchedule}"
+
       -- Update the naive schedule with the result of unification
       let updatedNaiveSchedule ← updateScheduleSteps originalNaiveSchedule
 

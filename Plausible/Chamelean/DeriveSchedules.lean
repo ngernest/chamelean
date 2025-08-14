@@ -400,4 +400,5 @@ def possibleSchedules (vars : List (Name × Expr)) (hypotheses : List Hypothesis
           | ScheduleStep.SuchThat inputs _ _ => inputs.length <= 1
           | _ => true))
 
+  -- Sort the schedules in terms of increasing length (we prioritize shorter schedules over longer ones)
   return (List.mergeSort finalSchedules (le := fun s1 s2 => s1.length <= s2.length))

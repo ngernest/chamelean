@@ -60,7 +60,7 @@ deriving Repr, DecidableEq, Arbitrary
 
 /-- The result of an `APICall` operation -/
 inductive Result where
-| Created (n : Nat)
+| Created (bucketID : Nat)
 | Removed
 | Error (s : String)
 | OpResult (r : StateResult)
@@ -227,5 +227,6 @@ inductive EvalApiCalls : Nat × List (Nat × List (String × String)) → List (
     EvalApiCall s1 (c, r, s2) →
     EvalApiCalls s2 (crs, s3) →
     EvalApiCalls s1 (((c, r)::crs), s3)
+
 
 end KeyValueStore

@@ -60,7 +60,7 @@ def elementsWithDefault [Inhabited α] (default : α) (xs : List α) : Gen α :=
   match xs with
   | [] => return default
   | _ => do
-    let i ← Subtype.val <$> Gen.choose Nat 0 xs.length (by omega)
+    let i ← Subtype.val <$> Gen.choose Nat 0 (xs.length - 1) (by omega)
     return xs[i]!
 
 end GeneratorCombinators
