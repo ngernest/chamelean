@@ -67,3 +67,7 @@ import Test.DeriveEnumSuchThat.SimultaneousMatchingTests
 import Test.DeriveEnumSuchThat.DeriveSTLCEnumerator
 import Test.DeriveEnumSuchThat.NonLinearPatternsTest
 import Test.DeriveEnumSuchThat.DerivePermutationEnumerator
+
+-- Key Value Store Example
+import Test.KeyValueStoreExample.KeyValueStore
+import Test.KeyValueStoreExample.TestKeyValueStoreCheckerGenerators

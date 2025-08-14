@@ -1,4 +1,4 @@
-import Plausible.Chamelean.Examples.KeyValueStore
+import Test.KeyValueStoreExample.KeyValueStore
 import Plausible.Arbitrary
 import Plausible.DeriveArbitrary
 import Plausible.Chamelean.DeriveChecker
