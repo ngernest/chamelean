@@ -86,79 +86,79 @@ inductive LookupKV : List (String × String) → StateResult × String × Nat ×
 | LNone : forall k v, LookupKV [] ((.Failure "no such key"), k, 0, v)
 | LFound : forall k v s, LookupKV ((k, v)::s) (.Ok, k, 0, v)
 | LFoundS : forall k1 k2 v1 v2 s n n',
-    LookupKV s (.Ok, k1, n, v1) ->
-    n' = ver k1 k2 n ->
+    LookupKV s (.Ok, k1, n, v1) →
+    n' = ver k1 k2 n →
     LookupKV ((k2, v2)::s) (.Ok, k1, n', v1)
 | LWrongver : forall k v n,
     LookupKV [(k, v)] ((.Failure "no such version"), k, (.succ n), v)
 | LWrongverS : forall k1 v1 k2 v2 s n n',
-    LookupKV s ((.Failure "no such version"), k1, n, v1) ->
-    n' = ver k1 k2 n ->
+    LookupKV s ((.Failure "no such version"), k1, n, v1) →
+    n' = ver k1 k2 n →
     LookupKV ((k2, v2)::s) ((.Failure "no such version"), k1, n', v1)
 
 /-- `RemoveKV k s1 s2` holds if `s2` is the same as `s1` but with all occurrences of `(k,v)` removed, for any `v` -/
 inductive RemoveKV : String → (List (String × String)) → (List (String × String)) → Prop where
 | RNil : forall k, RemoveKV k [] []
 | RFound : forall k v s1 s2,
-    RemoveKV k s1 s2 ->
+    RemoveKV k s1 s2 →
     RemoveKV k ((k, v)::s1) s2
 | RCons : forall k1 k2 v2 s1 s2,
-    k1 != k2 ->
-    RemoveKV k1 s1 s2 ->
+    k1 != k2 →
+    RemoveKV k1 s1 s2 →
     RemoveKV k1 ((k2, v2)::s1) ((k2, v2)::s2)
 
 /-- `EvalStateApiCall s1 (c,r) s2` holds iff `s2` is the result of evaluating API call `c` on `s1`, returning result `r`. -/
 inductive EvalStateApiCall : List (String × String) → (StateAPICall × StateResult × List (String × String)) → Prop where
 | EGet : forall s k v,
-    LookupKV s (.Ok, k, 0, v) ->
+    LookupKV s (.Ok, k, 0, v) →
     EvalStateApiCall s ((.Get k none), (.Result v), s)
 | EGetFailNoKey : forall s k v,
-    LookupKV s ((.Failure "no such key"), k, 0, v) ->
+    LookupKV s ((.Failure "no such key"), k, 0, v) →
     EvalStateApiCall s ((.Get k none), (.Failure "no such key"), s)
 | EGetVersion : forall s k n v,
-    LookupKV s (.Ok, k, n, v) ->
+    LookupKV s (.Ok, k, n, v) →
     EvalStateApiCall s ((.Get k (some n)), (.Result v), s)
 | EGetFailNoVer : forall s k n v,
-    LookupKV s ((.Failure "no such version"), k, n, v) ->
+    LookupKV s ((.Failure "no such version"), k, n, v) →
     EvalStateApiCall s ((.Get k (some n)), (.Failure "no such version"), s)
 | EExists : forall k v s,
-    LookupKV s (.Ok, k, 0, v) ->
+    LookupKV s (.Ok, k, 0, v) →
     EvalStateApiCall s ((.KeyExists k), .Ok, s)
 | EExistsFail : forall k v s,
-    LookupKV s ((.Failure "no such key"), k, 0, v) ->
+    LookupKV s ((.Failure "no such key"), k, 0, v) →
     EvalStateApiCall s ((.KeyExists k), (.Result "no such key"), s)
 | ESet : forall s1 s2 k v,
-    AddKV k v s1 s2 ->
+    AddKV k v s1 s2 →
     EvalStateApiCall s1 ((.Set k v), .Ok, s2)
 | ECopy : forall k v k2 s1 s2,
-    LookupKV s1 (.Ok, k, 0, v) ->
-    AddKV k2 v s1 s2 ->
+    LookupKV s1 (.Ok, k, 0, v) →
+    AddKV k2 v s1 s2 →
     EvalStateApiCall s1 ((.Copy k k2), .Ok, s2)
 | ECopyFail : forall k v k2 s,
-    LookupKV s ((.Failure "no such key"), k, 0, v) ->
+    LookupKV s ((.Failure "no such key"), k, 0, v) →
     EvalStateApiCall s ((.Copy k k2), (.Failure "no such key"), s)
 | EAppend : forall s1 s2 k v v2 v3,
-    LookupKV s1 (.Ok, k, 0, v) ->
-    v3 = v ++ v2 ->
-    AddKV k v3 s1 s2 ->
+    LookupKV s1 (.Ok, k, 0, v) →
+    v3 = v ++ v2 →
+    AddKV k v3 s1 s2 →
     EvalStateApiCall s1 ((.Append k v3), .Ok, s2)
 | EAppendFail : forall s k v v2,
-    LookupKV s ((.Failure "no such key"), k, 0, v) ->
+    LookupKV s ((.Failure "no such key"), k, 0, v) →
     EvalStateApiCall s ((.Append k v2), (.Failure "no such key"), s)
 | EDeletePresent : forall s1 s2 k v,
-    LookupKV s1 (.Ok, k, 0, v) ->
-    RemoveKV k s1 s2 ->
+    LookupKV s1 (.Ok, k, 0, v) →
+    RemoveKV k s1 s2 →
     EvalStateApiCall s1 ((.Delete k), .Ok, s2)
 | EDeleteFail : forall s k v,
-    LookupKV s ((.Failure "no such key"), k, 0, v) ->
+    LookupKV s ((.Failure "no such key"), k, 0, v) →
     EvalStateApiCall s ((.Delete k), (.Failure "no such key"), s)
 
 /-- `GetBucket s (n, x)` holds if the bucket store `s` contains a bucket with identifier `n` and contents `x`. -/
 inductive GetBucket : List (Nat × List (String × String)) → (Nat × List (String × String)) → Prop where
 | GBFound : forall n x s, GetBucket ((n, x)::s) (n, x)
 | GBNext : forall n n' x x' s,
-    n != n' ->
-    GetBucket s (n, x) ->
+    n != n' →
+    GetBucket s (n, x) →
     GetBucket ((n', x')::s) (n, x)
 
 /-- Add a new bucket with identifier `n` and empty contents to the K/V store `s`. -/
@@ -190,30 +190,32 @@ def updateBucket (n : Nat) (s : List (Nat × List α)) (x : List α) : Option (L
         | none => none
         | some s'' => some ((n', x')::s'')
 
-/- Store API calls -/
+------------------------------------------------------------------------
+-- Part Three: Inductive relations for evaluating API calls on the store
+-----------------------------------------------------------------------
 
 /-- `EvalApiCall (n, s) (c, r, (n', s'))` holds if evaluating API call `c` on state `(n, s)`
     produces result `r` and new state `(n', s')`, where `n` is the next bucket ID and `s` is the resultant store. -/
 inductive EvalApiCall : Nat × List (Nat × List (String × String)) → (APICall × Result × (Nat × List (Nat × List (String × String)))) → Prop where
 | ESCreate : forall n s s',
-    addBucket n s = s' ->
+    addBucket n s = s' →
     EvalApiCall (n, s) (APICall.CreateBucket, (Result.Created n), (Nat.succ n, s'))
 | ESOp : forall n n' c r s s' x x',
-    GetBucket s (n', x) ->
-    EvalStateApiCall x (c, r, x') ->
-    (some s') = updateBucket n' s x' ->
+    GetBucket s (n', x) →
+    EvalStateApiCall x (c, r, x') →
+    (some s') = updateBucket n' s x' →
     EvalApiCall (n, s) ((APICall.OpBucket n' c), (Result.OpResult r), (n, s'))
 | ESRemove : forall n n' s s' x,
-    GetBucket s (n', x) ->
-    (some s') = removeBucket n' s ->
+    GetBucket s (n', x) →
+    (some s') = removeBucket n' s →
     EvalApiCall (n, s) ((APICall.DeleteBucket n'), Result.Removed, (n, s'))
 
 /-- `EvalApiCalls s1 crs s2` holds if evaluating the list of API calls `crs` on `s1` produces `s2`. -/
 inductive EvalApiCalls : Nat × List (Nat × List (String × String)) → List (APICall × Result) × (Nat × List (Nat × List (String × String))) → Prop where
 | EsNil : forall s, EvalApiCalls s ([], s)
 | EsCons : forall s1 s2 s3 c crs r,
-    EvalApiCall s1 (c, r, s2) ->
-    EvalApiCalls s2 (crs, s3) ->
+    EvalApiCall s1 (c, r, s2) →
+    EvalApiCalls s2 (crs, s3) →
     EvalApiCalls s1 (((c, r)::crs), s3)
 
 end KeyValueStore
