@@ -45,3 +45,4 @@ import Plausible.Chamelean.Examples.ExampleInductiveRelations
 import Plausible.Chamelean.Examples.STLC
 import Plausible.Chamelean.Examples.Trees
 import Plausible.Chamelean.Examples.KeyValueStore
+import Plausible.Chamelean.Examples.KeyValueStoreCheckerGenerators
