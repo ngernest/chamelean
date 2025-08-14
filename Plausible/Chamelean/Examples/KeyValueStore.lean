@@ -160,4 +160,52 @@ inductive GetBucket : List (Nat × (List (String × String))) → (Nat × List (
     GetBucket s (n, x) ->
     GetBucket ((n', x')::s) (n, x)
 
+def addBucket (n : Nat) (s : List (Nat × (List α))) : List (Nat × (List α)) :=
+  (n, [])::s
+
+def removeBucket (n : Nat) (s : List (Nat × (List α))) : Option (List (Nat × List α)) :=
+  match s with
+  | [] => none
+  | (n', x)::s' =>
+      if n == n' then some s'
+      else
+        match removeBucket n s' with
+        | none => none
+        | some s'' => some ((n', x)::s'')
+
+def updateBucket (n : Nat) (s : List (Nat × (List α))) (x : List α) : Option (List (Nat × List α)) :=
+  match s with
+  | [] => none
+  | (n', x')::s' =>
+      if n == n' then some ((n', x)::s')
+      else
+        match updateBucket n s' x with
+        | none => none
+        | some s'' => some ((n', x')::s'')
+
+/- Store API calls -/
+
+/-- TODO: Add failure cases -/
+inductive EvalApiCall : Nat × List (Nat × List (String × String)) → (APICall × Result × (Nat × List (Nat × List (String × String)))) → Prop where
+| ESCreate : forall n s s',
+    addBucket n s = s' ->
+    EvalApiCall (n, s) (APICall.CreateBucket, (Result.Created n), (Nat.succ n, s'))
+| ESOp : forall n n' c r s s' x x',
+    GetBucket s (n', x) ->
+    EvalStateApiCall x (c, r, x') ->
+    (some s') = updateBucket n' s x' ->
+    EvalApiCall (n, s) ((APICall.OpBucket n' c), (Result.OpResult r), (n, s'))
+| ESRemove : forall n n' s s' x,
+    GetBucket s (n', x) ->
+    (some s') = removeBucket n' s ->
+    EvalApiCall (n, s) ((APICall.DeleteBucket n'), Result.Removed, (n, s'))
+
+/-- `EvalApiCalls s1 crs s2` holds if evaluating the list of API calls `crs` on `s1` produces `s2`. -/
+inductive EvalApiCalls : Nat × List (Nat × List (String × String)) → List (APICall × Result) × (Nat × List (Nat × List (String × String))) → Prop where
+| EsNil : forall s, EvalApiCalls s ([], s)
+| EsCons : forall s1 s2 s3 c crs r,
+    EvalApiCall s1 (c, r, s2) ->
+    EvalApiCalls s2 (crs, s3) ->
+    EvalApiCalls s1 (((c, r)::crs), s3)
+
 end KeyValueStore
