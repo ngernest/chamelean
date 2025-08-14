@@ -3,115 +3,158 @@ open Nat
 
 namespace KeyValueStore
 
-inductive state_api_call where
-| get (k: String) (ver: Option Nat): state_api_call
-| key_exists (k: String): state_api_call
-| set (k: String) (v: String): state_api_call
-| copy (k: String) (k2: String): state_api_call
-| append (k: String) (v: String): state_api_call
-| delete (k: String): state_api_call
+
+/-!
+
+The K/V store is (represented as) an association list of bucket IDs and states and a counter of legal bucket IDs,
+and each state is an association list of key-value pairs.
+Operations on the store involve creating and deleting buckets, and operating on the contents of a bucket's state.
+
+Updating the state adds a _new_ pair to the state, which will be seen first on lookup, making it the newest version, version 0.
+Removal clears all pairs for the key from the state.
+
+A real key-value store we use for differential testing may represent things differently.
+For example, bucket IDs could be arbitrary, rather than a predictable count.
+Thus, when doing checking against a real store, you'd generate a set of inputs and then map the bucket IDs
+that occur in those inputs against the real bucket IDs you see in the real store's I/O. This is basically implementing "prophecy variables".
+
+-/
+
+---------------------------------------------------------
+-- Part One: Basic syntax for API calls to a K/V store
+---------------------------------------------------------
+
+/-- Operations on a bucket state -/
+inductive StateAPICall where
+| Get (k : String) (ver : Option Nat)
+| KeyExists (k : String)
+| Set (k : String) (v : String)
+| Copy (k : String) (k2 : String)
+| Append (k : String) (v : String)
+| Delete (k : String)
 deriving Repr
 
-inductive state_result where
+/-- The result of a `StateAPICall` -/
+inductive StateResult where
 | Ok
-| Failure (s:String): state_result
-| Result (s:String): state_result
+| Failure (s : String)
+| Result (s : String)
 deriving Repr
 
-inductive api_call where
-| create_bucket
-| op_bucket (bucket_id: Nat) (c: state_api_call): api_call
-| delete_bucket (bucket_id: Nat): api_call
+/-- Operations on the K/V store -/
+inductive APICall where
+| CreateBucket
+| OpBucket (bucketID : Nat) (c : StateAPICall)
+| DeleteBucket (bucketID : Nat)
+deriving Repr
 
-inductive result where
-| Created (n:Nat) : result
-| Removed: result
-| Error (s:String): result
-| Op_result (r: state_result): result
+/-- The result of an `APICall` operation -/
+inductive Result where
+| Created (n : Nat)
+| Removed
+| Error (s : String)
+| OpResult (r : StateResult)
+deriving Repr
 
-inductive add_kv : String -> String -> (List (String × String)) -> (List (String × String)) -> Prop where
-| A_nil: ∀ k v s, add_kv k v s ((k,v)::s)
+------------------------------------------------------------------
+-- Part Two: Semantics of the K/V store, as an inductive relation
+------------------------------------------------------------------
 
-def ver (k1:String) (k2:String) (n:Nat) : Nat := if k1 == k2 then (succ n) else n
+/-! **Functions for updating a bucket's state**
 
-def append_string (s1:String) (s2:String) : String := s1 ++ s2
+Notes about the way these are expressed:
+  1. We express these basic semantic functions as inductive relations so QC can run them backwards.
+     We do similarly with the definitions of API call semantics below.
+  2. Some of the relations group things as tuples in order to support auto-derivation of input generators.
+    For example, we have `lookup_kv s (k,v)` and not `lookup_kv s k v` because we want to generate both `k` and `v` together.
+    Future versions of QuickChick should alleviate the need to do this grouping.
+-/
 
-inductive lookup_kv : (List (String × String)) -> state_result ×  String ×  Nat  ×  String -> Prop where
-| L_none: forall k v, lookup_kv [] ((state_result.Failure "no such key"),k,0,v)
-| L_found: forall k v s, lookup_kv ((k,v)::s) (.Ok,k,0,v)
-| L_found_S: forall k1 k2 v1 v2 s n n',
-    lookup_kv s (.Ok,k1,n,v1) ->
+inductive AddKV : String → String → (List (String × String)) → List (String × String) → Prop where
+| ANil : ∀ k v s, AddKV k v s ((k, v)::s)
+
+/-- Helper function used to improve improve the generator's success rate -/
+def ver (k1 : String) (k2 : String) (n : Nat) : Nat :=
+  if k1 == k2 then (succ n) else n
+
+def appendString (s1 : String) (s2 : String) : String := s1 ++ s2
+
+inductive LookupKV : (List (String × String)) → StateResult × String × Nat × String → Prop where
+| LNone : forall k v, LookupKV [] ((.Failure "no such key"), k, 0, v)
+| LFound : forall k v s, LookupKV ((k, v)::s) (.Ok, k, 0, v)
+| LFoundS : forall k1 k2 v1 v2 s n n',
+    LookupKV s (.Ok, k1, n, v1) ->
     n' = ver k1 k2 n ->
-    lookup_kv ((k2,v2)::s) (.Ok,k1,n',v1)
-| L_wrongver: forall k v n,
-    lookup_kv [(k,v)] ((.Failure "no such version"),k,(succ n),v)
-| L_wrongver_S: forall k1 v1 k2 v2 s n n',
-    lookup_kv s ((.Failure "no such version"),k1,n,v1) ->
+    LookupKV ((k2, v2)::s) (.Ok, k1, n', v1)
+| LWrongver : forall k v n,
+    LookupKV [(k, v)] ((.Failure "no such version"), k, (succ n), v)
+| LWrongverS : forall k1 v1 k2 v2 s n n',
+    LookupKV s ((.Failure "no such version"), k1, n, v1) ->
     n' = ver k1 k2 n ->
-    lookup_kv ((k2,v2)::s) ((.Failure "no such version"),k1,n',v1)
+    LookupKV ((k2, v2)::s) ((.Failure "no such version"), k1, n', v1)
 
 
-inductive remove_kv : String -> (List (String × String)) -> (List (String × String)) -> Prop where
-| R_nil: forall k, remove_kv k [] []
-| R_found: forall k v s1 s2,
-    remove_kv k s1 s2 ->
-    remove_kv k ((k,v)::s1) s2
-| R_cons: forall k1 k2 v2 s1 s2,
+inductive RemoveKV : String → (List (String × String)) → (List (String × String)) → Prop where
+| RNil : forall k, RemoveKV k [] []
+| RFound : forall k v s1 s2,
+    RemoveKV k s1 s2 ->
+    RemoveKV k ((k, v)::s1) s2
+| RCons : forall k1 k2 v2 s1 s2,
     k1 != k2 ->
-    remove_kv k1 s1 s2 ->
-    remove_kv k1 ((k2,v2)::s1) ((k2,v2)::s2)
+    RemoveKV k1 s1 s2 ->
+    RemoveKV k1 ((k2, v2)::s1) ((k2, v2)::s2)
 
 
-inductive eval_state_api_call : (List (String × String)) -> (state_api_call × state_result × (List (String × String))) -> Prop where
-| E_get : forall s k v,
-    lookup_kv s (.Ok,k,0,v) ->
-    eval_state_api_call s ((.get k none),(.Result v),s)
-| E_get_fail_no_key: forall s k v,
-    lookup_kv s ((.Failure "no such key"),k,0,v) ->
-    eval_state_api_call s ((.get k none),(.Failure "no such key"),s)
-| E_get_version : forall s k n v,
-    lookup_kv s (.Ok,k,n,v) ->
-    eval_state_api_call s ((.get k (some n)),(.Result v),s)
-| E_get_fail_no_ver: forall s k n v,
-    lookup_kv s ((.Failure "no such version"),k,n,v) ->
-    eval_state_api_call s ((.get k (some n)),(.Failure "no such version"),s)
-| E_exists : forall k v s,
-    lookup_kv s (.Ok,k,0,v) ->
-    eval_state_api_call s ((.key_exists k),.Ok,s)
-| E_exists_fail : forall k v s,
-    lookup_kv s ((.Failure "no such key"),k,0,v) ->
-    eval_state_api_call s ((.key_exists k),(.Result "no such key"),s)
-| E_set : forall s1 s2 k v,
-    add_kv k v s1 s2 ->
-    eval_state_api_call s1 ((.set k v),.Ok,s2)
-| E_copy : forall k v k2 s1 s2,
-    lookup_kv s1 (.Ok,k,0,v) ->
-    add_kv k2 v s1 s2 ->
-    eval_state_api_call s1 ((.copy k k2),.Ok,s2)
-| E_copy_fail : forall k v k2 s,
-    lookup_kv s ((.Failure "no such key"),k,0,v) ->
-    eval_state_api_call s ((.copy k k2),(.Failure "no such key"),s)
-| E_append : forall s1 s2 k v v2 v3,
-    lookup_kv s1 (.Ok,k,0,v) ->
-    v3 = append_string v v2 ->
-    add_kv k v3 s1 s2 ->
-    eval_state_api_call s1 ((.append k v3),.Ok,s2)
-| E_append_fail : forall s k v v2,
-    lookup_kv s ((.Failure "no such key"),k,0,v) ->
-    eval_state_api_call s ((.append k v2),(.Failure "no such key"),s)
-| E_delete_present : forall s1 s2 k v,
-    lookup_kv s1 (.Ok,k,0,v) ->
-    remove_kv k s1 s2 ->
-    eval_state_api_call s1 ((.delete k),.Ok,s2)
-| E_delete_fail : forall s k v,
-    lookup_kv s ((.Failure "no such key"),k,0,v) ->
-    eval_state_api_call s ((.delete k),(.Failure "no such key"),s)
+inductive EvalStateApiCall : (List (String × String)) → (StateAPICall × StateResult × (List (String × String))) → Prop where
+| EGet : forall s k v,
+    LookupKV s (.Ok, k, 0, v) ->
+    EvalStateApiCall s ((.Get k none), (.Result v), s)
+| EGetFailNoKey : forall s k v,
+    LookupKV s ((.Failure "no such key"), k, 0, v) ->
+    EvalStateApiCall s ((.Get k none), (.Failure "no such key"), s)
+| EGetVersion : forall s k n v,
+    LookupKV s (.Ok, k, n, v) ->
+    EvalStateApiCall s ((.Get k (some n)), (.Result v), s)
+| EGetFailNoVer : forall s k n v,
+    LookupKV s ((.Failure "no such version"), k, n, v) ->
+    EvalStateApiCall s ((.Get k (some n)), (.Failure "no such version"), s)
+| EExists : forall k v s,
+    LookupKV s (.Ok, k, 0, v) ->
+    EvalStateApiCall s ((.KeyExists k), .Ok, s)
+| EExistsFail : forall k v s,
+    LookupKV s ((.Failure "no such key"), k, 0, v) ->
+    EvalStateApiCall s ((.KeyExists k), (.Result "no such key"), s)
+| ESet : forall s1 s2 k v,
+    AddKV k v s1 s2 ->
+    EvalStateApiCall s1 ((.Set k v), .Ok, s2)
+| ECopy : forall k v k2 s1 s2,
+    LookupKV s1 (.Ok, k, 0, v) ->
+    AddKV k2 v s1 s2 ->
+    EvalStateApiCall s1 ((.Copy k k2), .Ok, s2)
+| ECopyFail : forall k v k2 s,
+    LookupKV s ((.Failure "no such key"), k, 0, v) ->
+    EvalStateApiCall s ((.Copy k k2), (.Failure "no such key"), s)
+| EAppend : forall s1 s2 k v v2 v3,
+    LookupKV s1 (.Ok, k, 0, v) ->
+    v3 = appendString v v2 ->
+    AddKV k v3 s1 s2 ->
+    EvalStateApiCall s1 ((.Append k v3), .Ok, s2)
+| EAppendFail : forall s k v v2,
+    LookupKV s ((.Failure "no such key"), k, 0, v) ->
+    EvalStateApiCall s ((.Append k v2), (.Failure "no such key"), s)
+| EDeletePresent : forall s1 s2 k v,
+    LookupKV s1 (.Ok, k, 0, v) ->
+    RemoveKV k s1 s2 ->
+    EvalStateApiCall s1 ((.Delete k), .Ok, s2)
+| EDeleteFail : forall s k v,
+    LookupKV s ((.Failure "no such key"), k, 0, v) ->
+    EvalStateApiCall s ((.Delete k), (.Failure "no such key"), s)
 
-inductive get_bucket: List (Nat × (List (String × String))) -> (Nat × (List (String ×  String))) -> Prop where
-| GB_found : forall n x s, get_bucket ((n,x)::s) (n,x)
-| GB_next: forall n n' x x' s,
+inductive GetBucket : List (Nat × (List (String × String))) → (Nat × (List (String × String))) → Prop where
+| GBFound : forall n x s, GetBucket ((n, x)::s) (n, x)
+| GBNext : forall n n' x x' s,
     n != n' ->
-    get_bucket s (n,x) ->
-    get_bucket ((n',x')::s) (n,x)
+    GetBucket s (n, x) ->
+    GetBucket ((n', x')::s) (n, x)
 
 end KeyValueStore
