@@ -8,6 +8,8 @@ open Plausible
 
 namespace KeyValueStore
 
+-- Suppress warnings for unused variables in derived generators/checkers
+set_option linter.unusedVariables false
 
 /-!
 
@@ -39,10 +41,15 @@ inductive StateAPICall where
 | Delete (k : String)
 deriving Repr, DecidableEq, Arbitrary
 
-/-- The result of a `StateAPICall` -/
+/-- The result of a `StateAPICall`.
+    Note that we've changed `.Failure "no such key"`, `.Failure "no such version"` and `.Result "no such key"`
+    in the original Coq code to their own dedicated constructors,
+    since Chamelean doesn't have good support for handling string literals right now. -/
 inductive StateResult where
 | Ok
-| Failure (s : String)
+| NoSuchKeyFailure
+| NoSuchVersionFailure
+| NoSuchKeyResult
 | Result (s : String)
 deriving Repr, DecidableEq, Arbitrary
 
@@ -88,18 +95,18 @@ def ver (k1 : String) (k2 : String) (n : Nat) : Nat :=
      `LookupKV s ((Failure s),k,n,v)` holds if either `k` does not exist in `s`,
      or it does but not at the version `n`. -/
 inductive LookupKV : List (String × String) → StateResult × String × Nat × String → Prop where
-| LNone : forall k v, LookupKV [] ((.Failure "no such key"), k, .zero, v)
+| LNone : forall k v, LookupKV [] (.NoSuchKeyFailure, k, .zero, v)
 | LFound : forall k v s, LookupKV ((k, v)::s) (.Ok, k, .zero, v)
 | LFoundS : forall k1 k2 v1 v2 s n n',
     LookupKV s (.Ok, k1, n, v1) →
     n' = ver k1 k2 n →
     LookupKV ((k2, v2)::s) (.Ok, k1, n', v1)
 | LWrongver : forall k v n,
-    LookupKV [(k, v)] ((.Failure "no such version"), k, (.succ n), v)
+    LookupKV [(k, v)] (.NoSuchVersionFailure, k, (.succ n), v)
 | LWrongverS : forall k1 v1 k2 v2 s n n',
-    LookupKV s ((.Failure "no such version"), k1, n, v1) →
+    LookupKV s (.NoSuchVersionFailure, k1, n, v1) →
     n' = ver k1 k2 n →
-    LookupKV ((k2, v2)::s) ((.Failure "no such version"), k1, n', v1)
+    LookupKV ((k2, v2)::s) (.NoSuchVersionFailure, k1, n', v1)
 
 /-- `RemoveKV k s1 s2` holds if `s2` is the same as `s1` but with all occurrences of `(k,v)` removed, for any `v` -/
 inductive RemoveKV : String → (List (String × String)) → (List (String × String)) → Prop where
@@ -118,20 +125,20 @@ inductive EvalStateApiCall : List (String × String) → (StateAPICall × StateR
     LookupKV s (.Ok, k, .zero, v) →
     EvalStateApiCall s ((.Get k none), (.Result v), s)
 | EGetFailNoKey : forall s k v,
-    LookupKV s ((.Failure "no such key"), k, .zero, v) →
-    EvalStateApiCall s ((.Get k none), (.Failure "no such key"), s)
+    LookupKV s (.NoSuchKeyFailure, k, .zero, v) →
+    EvalStateApiCall s ((.Get k none), .NoSuchKeyFailure, s)
 | EGetVersion : forall s k n v,
     LookupKV s (.Ok, k, n, v) →
     EvalStateApiCall s ((.Get k (some n)), (.Result v), s)
 | EGetFailNoVer : forall s k n v,
-    LookupKV s ((.Failure "no such version"), k, n, v) →
-    EvalStateApiCall s ((.Get k (some n)), (.Failure "no such version"), s)
+    LookupKV s (.NoSuchVersionFailure, k, n, v) →
+    EvalStateApiCall s (.Get k (some n), .NoSuchVersionFailure, s)
 | EExists : forall k v s,
     LookupKV s (.Ok, k, .zero, v) →
     EvalStateApiCall s ((.KeyExists k), .Ok, s)
 | EExistsFail : forall k v s,
-    LookupKV s ((.Failure "no such key"), k, .zero, v) →
-    EvalStateApiCall s ((.KeyExists k), (.Result "no such key"), s)
+    LookupKV s (.NoSuchKeyFailure, k, .zero, v) →
+    EvalStateApiCall s (.KeyExists k, .NoSuchKeyResult, s)
 | ESet : forall s1 s2 k v,
     AddKV k v s1 s2 →
     EvalStateApiCall s1 ((.Set k v), .Ok, s2)
@@ -140,23 +147,23 @@ inductive EvalStateApiCall : List (String × String) → (StateAPICall × StateR
     AddKV k2 v s1 s2 →
     EvalStateApiCall s1 ((.Copy k k2), .Ok, s2)
 | ECopyFail : forall k v k2 s,
-    LookupKV s ((.Failure "no such key"), k, .zero, v) →
-    EvalStateApiCall s ((.Copy k k2), (.Failure "no such key"), s)
+    LookupKV s (.NoSuchKeyFailure, k, .zero, v) →
+    EvalStateApiCall s ((.Copy k k2), .NoSuchKeyFailure, s)
 | EAppend : forall s1 s2 k v v2 v3,
     LookupKV s1 (.Ok, k, .zero, v) →
     v3 = v ++ v2 →
     AddKV k v3 s1 s2 →
     EvalStateApiCall s1 ((.Append k v3), .Ok, s2)
 | EAppendFail : forall s k v v2,
-    LookupKV s ((.Failure "no such key"), k, .zero, v) →
-    EvalStateApiCall s ((.Append k v2), (.Failure "no such key"), s)
+    LookupKV s (.NoSuchKeyFailure, k, .zero, v) →
+    EvalStateApiCall s ((.Append k v2), .NoSuchKeyFailure, s)
 | EDeletePresent : forall s1 s2 k v,
     LookupKV s1 (.Ok, k, .zero, v) →
     RemoveKV k s1 s2 →
     EvalStateApiCall s1 ((.Delete k), .Ok, s2)
 | EDeleteFail : forall s k v,
-    LookupKV s ((.Failure "no such key"), k, .zero, v) →
-    EvalStateApiCall s ((.Delete k), (.Failure "no such key"), s)
+    LookupKV s (.NoSuchKeyFailure, k, .zero, v) →
+    EvalStateApiCall s ((.Delete k), .NoSuchKeyFailure, s)
 
 /-- `GetBucket s (n, x)` holds if the bucket store `s` contains a bucket with identifier `n` and contents `x`. -/
 inductive GetBucket : List (Nat × List (String × String)) → (Nat × List (String × String)) → Prop where
@@ -356,6 +363,7 @@ info: Try this generator: instance : ArbitrarySizedSuchThat (List (String × Str
 #guard_msgs(info, drop warning) in
 #derive_generator (fun (s2 : List (String × String)) => KeyValueStore.AddKV k v s1 s2)
 
+
 /--
 info: Try this generator: instance : ArbitrarySizedSuchThat (List (String × String)) (fun s1_1 => KeyValueStore.LookupKV s1_1 kv_1) where
   arbitrarySizedST :=
@@ -366,7 +374,7 @@ info: Try this generator: instance : ArbitrarySizedSuchThat (List (String × Str
         OptionTGen.backtrack
           [(1,
               match kv_1 with
-              | Prod.mk (KeyValueStore.StateResult.Failure («no such key»)) (Prod.mk k (Prod.mk (Nat.zero) v)) =>
+              | Prod.mk (KeyValueStore.StateResult.NoSuchKeyFailure) (Prod.mk k (Prod.mk (Nat.zero) v)) =>
                 return List.nil
               | _ => OptionT.fail),
             (1,
@@ -377,14 +385,14 @@ info: Try this generator: instance : ArbitrarySizedSuchThat (List (String × Str
               | _ => OptionT.fail),
             (1,
               match kv_1 with
-              | Prod.mk (KeyValueStore.StateResult.Failure («no such version»)) (Prod.mk k (Prod.mk (Nat.succ n) v)) =>
+              | Prod.mk (KeyValueStore.StateResult.NoSuchVersionFailure) (Prod.mk k (Prod.mk (Nat.succ n) v)) =>
                 return List.cons (Prod.mk k v) (List.nil)
               | _ => OptionT.fail)]
       | Nat.succ size' =>
         OptionTGen.backtrack
           [(1,
               match kv_1 with
-              | Prod.mk (KeyValueStore.StateResult.Failure («no such key»)) (Prod.mk k (Prod.mk (Nat.zero) v)) =>
+              | Prod.mk (KeyValueStore.StateResult.NoSuchKeyFailure) (Prod.mk k (Prod.mk (Nat.zero) v)) =>
                 return List.nil
               | _ => OptionT.fail),
             (1,
@@ -395,7 +403,7 @@ info: Try this generator: instance : ArbitrarySizedSuchThat (List (String × Str
               | _ => OptionT.fail),
             (1,
               match kv_1 with
-              | Prod.mk (KeyValueStore.StateResult.Failure («no such version»)) (Prod.mk k (Prod.mk (Nat.succ n) v)) =>
+              | Prod.mk (KeyValueStore.StateResult.NoSuchVersionFailure) (Prod.mk k (Prod.mk (Nat.succ n) v)) =>
                 return List.cons (Prod.mk k v) (List.nil)
               | _ => OptionT.fail),
             (Nat.succ size',
@@ -415,7 +423,7 @@ info: Try this generator: instance : ArbitrarySizedSuchThat (List (String × Str
               | _ => OptionT.fail),
             (Nat.succ size',
               match kv_1 with
-              | Prod.mk (KeyValueStore.StateResult.Failure («no such version»)) (Prod.mk k1 (Prod.mk n' v1)) => do
+              | Prod.mk (KeyValueStore.StateResult.NoSuchVersionFailure) (Prod.mk k1 (Prod.mk n' v1)) => do
                 let k2 ← Plausible.Arbitrary.arbitrary;
                 do
                   let n ← Plausible.Arbitrary.arbitrary;
@@ -425,8 +433,7 @@ info: Try this generator: instance : ArbitrarySizedSuchThat (List (String × Str
                       | Option.some Bool.true => do
                         let s ←
                           aux_arb initSize size'
-                              (Prod.mk (KeyValueStore.StateResult.Failure («no such version»))
-                                (Prod.mk k1 (Prod.mk n v1)));
+                              (Prod.mk (KeyValueStore.StateResult.NoSuchVersionFailure) (Prod.mk k1 (Prod.mk n v1)));
                         return List.cons (Prod.mk k2 v2) s
                       | _ => OptionT.fail
               | _ => OptionT.fail)]
@@ -484,7 +491,7 @@ info: Try this checker: instance : DecOpt (KeyValueStore.LookupKV s_1 kv_1) wher
         DecOpt.checkerBacktrack
           [fun _ =>
             match kv_1 with
-            | Prod.mk (KeyValueStore.StateResult.Failure («no such key»)) (Prod.mk k (Prod.mk (Nat.zero) v)) =>
+            | Prod.mk (KeyValueStore.StateResult.NoSuchKeyFailure) (Prod.mk k (Prod.mk (Nat.zero) v)) =>
               match s_1 with
               | List.nil => Option.some Bool.true
               | _ => Option.some Bool.false
@@ -499,8 +506,7 @@ info: Try this checker: instance : DecOpt (KeyValueStore.LookupKV s_1 kv_1) wher
             | _ => Option.some Bool.false,
             fun _ =>
             match kv_1 with
-            |
-            Prod.mk (KeyValueStore.StateResult.Failure («no such version»)) (Prod.mk u_2 (Prod.mk (Nat.succ n) u_3)) =>
+            | Prod.mk (KeyValueStore.StateResult.NoSuchVersionFailure) (Prod.mk u_2 (Prod.mk (Nat.succ n) u_3)) =>
               match s_1 with
               | List.cons (Prod.mk k v) (List.nil) =>
                 DecOpt.andOptList [DecOpt.decOpt (BEq.beq u_2 k) initSize, DecOpt.decOpt (BEq.beq u_3 v) initSize]
@@ -510,7 +516,7 @@ info: Try this checker: instance : DecOpt (KeyValueStore.LookupKV s_1 kv_1) wher
         DecOpt.checkerBacktrack
           [fun _ =>
             match kv_1 with
-            | Prod.mk (KeyValueStore.StateResult.Failure («no such key»)) (Prod.mk k (Prod.mk (Nat.zero) v)) =>
+            | Prod.mk (KeyValueStore.StateResult.NoSuchKeyFailure) (Prod.mk k (Prod.mk (Nat.zero) v)) =>
               match s_1 with
               | List.nil => Option.some Bool.true
               | _ => Option.some Bool.false
@@ -525,8 +531,7 @@ info: Try this checker: instance : DecOpt (KeyValueStore.LookupKV s_1 kv_1) wher
             | _ => Option.some Bool.false,
             fun _ =>
             match kv_1 with
-            |
-            Prod.mk (KeyValueStore.StateResult.Failure («no such version»)) (Prod.mk u_2 (Prod.mk (Nat.succ n) u_3)) =>
+            | Prod.mk (KeyValueStore.StateResult.NoSuchVersionFailure) (Prod.mk u_2 (Prod.mk (Nat.succ n) u_3)) =>
               match s_1 with
               | List.cons (Prod.mk k v) (List.nil) =>
                 DecOpt.andOptList [DecOpt.decOpt (BEq.beq u_2 k) initSize, DecOpt.decOpt (BEq.beq u_3 v) initSize]
@@ -546,13 +551,13 @@ info: Try this checker: instance : DecOpt (KeyValueStore.LookupKV s_1 kv_1) wher
             | _ => Option.some Bool.false,
             fun _ =>
             match kv_1 with
-            | Prod.mk (KeyValueStore.StateResult.Failure («no such version»)) (Prod.mk k1 (Prod.mk n' v1)) =>
+            | Prod.mk (KeyValueStore.StateResult.NoSuchVersionFailure) (Prod.mk k1 (Prod.mk n' v1)) =>
               match s_1 with
               | List.cons (Prod.mk k2 v2) s =>
                 EnumeratorCombinators.enumerating Enum.enum
                   (DecOpt.andOptList
                     [aux_dec initSize size' s
-                        (Prod.mk (KeyValueStore.StateResult.Failure («no such version»)) (Prod.mk k1 (Prod.mk n v1))),
+                        (Prod.mk (KeyValueStore.StateResult.NoSuchVersionFailure) (Prod.mk k1 (Prod.mk n v1))),
                       DecOpt.decOpt (Eq n' (KeyValueStore.ver k1 k2 n)) initSize])
                   initSize
               | _ => Option.some Bool.false
@@ -587,14 +592,13 @@ info: Try this generator: instance : ArbitrarySizedSuchThat (List (String × Str
               match x_1 with
               |
               Prod.mk (KeyValueStore.StateAPICall.Get k (Option.none))
-                  (Prod.mk (KeyValueStore.StateResult.Failure («no such key»)) s_1) =>
+                  (Prod.mk (KeyValueStore.StateResult.NoSuchKeyFailure) s_1) =>
                 do
                 let v ← Plausible.Arbitrary.arbitrary;
                 match
                     DecOpt.decOpt
                       (KeyValueStore.LookupKV s_1
-                        (Prod.mk (KeyValueStore.StateResult.Failure («no such key»))
-                          (Prod.mk k (Prod.mk (Nat.zero) v))))
+                        (Prod.mk (KeyValueStore.StateResult.NoSuchKeyFailure) (Prod.mk k (Prod.mk (Nat.zero) v))))
                       initSize with
                   | Option.some Bool.true => return s_1
                   | _ => OptionT.fail
@@ -615,13 +619,13 @@ info: Try this generator: instance : ArbitrarySizedSuchThat (List (String × Str
               match x_1 with
               |
               Prod.mk (KeyValueStore.StateAPICall.Get k (Option.some n))
-                  (Prod.mk (KeyValueStore.StateResult.Failure («no such version»)) s_1) =>
+                  (Prod.mk (KeyValueStore.StateResult.NoSuchVersionFailure) s_1) =>
                 do
                 let v ← Plausible.Arbitrary.arbitrary;
                 match
                     DecOpt.decOpt
                       (KeyValueStore.LookupKV s_1
-                        (Prod.mk (KeyValueStore.StateResult.Failure («no such version»)) (Prod.mk k (Prod.mk n v))))
+                        (Prod.mk (KeyValueStore.StateResult.NoSuchVersionFailure) (Prod.mk k (Prod.mk n v))))
                       initSize with
                   | Option.some Bool.true => return s_1
                   | _ => OptionT.fail
@@ -642,14 +646,13 @@ info: Try this generator: instance : ArbitrarySizedSuchThat (List (String × Str
               match x_1 with
               |
               Prod.mk (KeyValueStore.StateAPICall.KeyExists k)
-                  (Prod.mk (KeyValueStore.StateResult.Result («no such key»)) s_1) =>
+                  (Prod.mk (KeyValueStore.StateResult.NoSuchKeyResult) s_1) =>
                 do
                 let v ← Plausible.Arbitrary.arbitrary;
                 match
                     DecOpt.decOpt
                       (KeyValueStore.LookupKV s_1
-                        (Prod.mk (KeyValueStore.StateResult.Failure («no such key»))
-                          (Prod.mk k (Prod.mk (Nat.zero) v))))
+                        (Prod.mk (KeyValueStore.StateResult.NoSuchKeyFailure) (Prod.mk k (Prod.mk (Nat.zero) v))))
                       initSize with
                   | Option.some Bool.true => return s_1
                   | _ => OptionT.fail
@@ -679,14 +682,13 @@ info: Try this generator: instance : ArbitrarySizedSuchThat (List (String × Str
               match x_1 with
               |
               Prod.mk (KeyValueStore.StateAPICall.Copy k k2)
-                  (Prod.mk (KeyValueStore.StateResult.Failure («no such key»)) s_1) =>
+                  (Prod.mk (KeyValueStore.StateResult.NoSuchKeyFailure) s_1) =>
                 do
                 let v ← Plausible.Arbitrary.arbitrary;
                 match
                     DecOpt.decOpt
                       (KeyValueStore.LookupKV s_1
-                        (Prod.mk (KeyValueStore.StateResult.Failure («no such key»))
-                          (Prod.mk k (Prod.mk (Nat.zero) v))))
+                        (Prod.mk (KeyValueStore.StateResult.NoSuchKeyFailure) (Prod.mk k (Prod.mk (Nat.zero) v))))
                       initSize with
                   | Option.some Bool.true => return s_1
                   | _ => OptionT.fail
@@ -714,14 +716,13 @@ info: Try this generator: instance : ArbitrarySizedSuchThat (List (String × Str
               match x_1 with
               |
               Prod.mk (KeyValueStore.StateAPICall.Append k v2)
-                  (Prod.mk (KeyValueStore.StateResult.Failure («no such key»)) s_1) =>
+                  (Prod.mk (KeyValueStore.StateResult.NoSuchKeyFailure) s_1) =>
                 do
                 let v ← Plausible.Arbitrary.arbitrary;
                 match
                     DecOpt.decOpt
                       (KeyValueStore.LookupKV s_1
-                        (Prod.mk (KeyValueStore.StateResult.Failure («no such key»))
-                          (Prod.mk k (Prod.mk (Nat.zero) v))))
+                        (Prod.mk (KeyValueStore.StateResult.NoSuchKeyFailure) (Prod.mk k (Prod.mk (Nat.zero) v))))
                       initSize with
                   | Option.some Bool.true => return s_1
                   | _ => OptionT.fail
@@ -744,14 +745,13 @@ info: Try this generator: instance : ArbitrarySizedSuchThat (List (String × Str
               match x_1 with
               |
               Prod.mk (KeyValueStore.StateAPICall.Delete k)
-                  (Prod.mk (KeyValueStore.StateResult.Failure («no such key»)) s_1) =>
+                  (Prod.mk (KeyValueStore.StateResult.NoSuchKeyFailure) s_1) =>
                 do
                 let v ← Plausible.Arbitrary.arbitrary;
                 match
                     DecOpt.decOpt
                       (KeyValueStore.LookupKV s_1
-                        (Prod.mk (KeyValueStore.StateResult.Failure («no such key»))
-                          (Prod.mk k (Prod.mk (Nat.zero) v))))
+                        (Prod.mk (KeyValueStore.StateResult.NoSuchKeyFailure) (Prod.mk k (Prod.mk (Nat.zero) v))))
                       initSize with
                   | Option.some Bool.true => return s_1
                   | _ => OptionT.fail
@@ -775,14 +775,13 @@ info: Try this generator: instance : ArbitrarySizedSuchThat (List (String × Str
               match x_1 with
               |
               Prod.mk (KeyValueStore.StateAPICall.Get k (Option.none))
-                  (Prod.mk (KeyValueStore.StateResult.Failure («no such key»)) s_1) =>
+                  (Prod.mk (KeyValueStore.StateResult.NoSuchKeyFailure) s_1) =>
                 do
                 let v ← Plausible.Arbitrary.arbitrary;
                 match
                     DecOpt.decOpt
                       (KeyValueStore.LookupKV s_1
-                        (Prod.mk (KeyValueStore.StateResult.Failure («no such key»))
-                          (Prod.mk k (Prod.mk (Nat.zero) v))))
+                        (Prod.mk (KeyValueStore.StateResult.NoSuchKeyFailure) (Prod.mk k (Prod.mk (Nat.zero) v))))
                       initSize with
                   | Option.some Bool.true => return s_1
                   | _ => OptionT.fail
@@ -803,13 +802,13 @@ info: Try this generator: instance : ArbitrarySizedSuchThat (List (String × Str
               match x_1 with
               |
               Prod.mk (KeyValueStore.StateAPICall.Get k (Option.some n))
-                  (Prod.mk (KeyValueStore.StateResult.Failure («no such version»)) s_1) =>
+                  (Prod.mk (KeyValueStore.StateResult.NoSuchVersionFailure) s_1) =>
                 do
                 let v ← Plausible.Arbitrary.arbitrary;
                 match
                     DecOpt.decOpt
                       (KeyValueStore.LookupKV s_1
-                        (Prod.mk (KeyValueStore.StateResult.Failure («no such version»)) (Prod.mk k (Prod.mk n v))))
+                        (Prod.mk (KeyValueStore.StateResult.NoSuchVersionFailure) (Prod.mk k (Prod.mk n v))))
                       initSize with
                   | Option.some Bool.true => return s_1
                   | _ => OptionT.fail
@@ -830,14 +829,13 @@ info: Try this generator: instance : ArbitrarySizedSuchThat (List (String × Str
               match x_1 with
               |
               Prod.mk (KeyValueStore.StateAPICall.KeyExists k)
-                  (Prod.mk (KeyValueStore.StateResult.Result («no such key»)) s_1) =>
+                  (Prod.mk (KeyValueStore.StateResult.NoSuchKeyResult) s_1) =>
                 do
                 let v ← Plausible.Arbitrary.arbitrary;
                 match
                     DecOpt.decOpt
                       (KeyValueStore.LookupKV s_1
-                        (Prod.mk (KeyValueStore.StateResult.Failure («no such key»))
-                          (Prod.mk k (Prod.mk (Nat.zero) v))))
+                        (Prod.mk (KeyValueStore.StateResult.NoSuchKeyFailure) (Prod.mk k (Prod.mk (Nat.zero) v))))
                       initSize with
                   | Option.some Bool.true => return s_1
                   | _ => OptionT.fail
@@ -867,14 +865,13 @@ info: Try this generator: instance : ArbitrarySizedSuchThat (List (String × Str
               match x_1 with
               |
               Prod.mk (KeyValueStore.StateAPICall.Copy k k2)
-                  (Prod.mk (KeyValueStore.StateResult.Failure («no such key»)) s_1) =>
+                  (Prod.mk (KeyValueStore.StateResult.NoSuchKeyFailure) s_1) =>
                 do
                 let v ← Plausible.Arbitrary.arbitrary;
                 match
                     DecOpt.decOpt
                       (KeyValueStore.LookupKV s_1
-                        (Prod.mk (KeyValueStore.StateResult.Failure («no such key»))
-                          (Prod.mk k (Prod.mk (Nat.zero) v))))
+                        (Prod.mk (KeyValueStore.StateResult.NoSuchKeyFailure) (Prod.mk k (Prod.mk (Nat.zero) v))))
                       initSize with
                   | Option.some Bool.true => return s_1
                   | _ => OptionT.fail
@@ -902,14 +899,13 @@ info: Try this generator: instance : ArbitrarySizedSuchThat (List (String × Str
               match x_1 with
               |
               Prod.mk (KeyValueStore.StateAPICall.Append k v2)
-                  (Prod.mk (KeyValueStore.StateResult.Failure («no such key»)) s_1) =>
+                  (Prod.mk (KeyValueStore.StateResult.NoSuchKeyFailure) s_1) =>
                 do
                 let v ← Plausible.Arbitrary.arbitrary;
                 match
                     DecOpt.decOpt
                       (KeyValueStore.LookupKV s_1
-                        (Prod.mk (KeyValueStore.StateResult.Failure («no such key»))
-                          (Prod.mk k (Prod.mk (Nat.zero) v))))
+                        (Prod.mk (KeyValueStore.StateResult.NoSuchKeyFailure) (Prod.mk k (Prod.mk (Nat.zero) v))))
                       initSize with
                   | Option.some Bool.true => return s_1
                   | _ => OptionT.fail
@@ -932,14 +928,13 @@ info: Try this generator: instance : ArbitrarySizedSuchThat (List (String × Str
               match x_1 with
               |
               Prod.mk (KeyValueStore.StateAPICall.Delete k)
-                  (Prod.mk (KeyValueStore.StateResult.Failure («no such key»)) s_1) =>
+                  (Prod.mk (KeyValueStore.StateResult.NoSuchKeyFailure) s_1) =>
                 do
                 let v ← Plausible.Arbitrary.arbitrary;
                 match
                     DecOpt.decOpt
                       (KeyValueStore.LookupKV s_1
-                        (Prod.mk (KeyValueStore.StateResult.Failure («no such key»))
-                          (Prod.mk k (Prod.mk (Nat.zero) v))))
+                        (Prod.mk (KeyValueStore.StateResult.NoSuchKeyFailure) (Prod.mk k (Prod.mk (Nat.zero) v))))
                       initSize with
                   | Option.some Bool.true => return s_1
                   | _ => OptionT.fail
