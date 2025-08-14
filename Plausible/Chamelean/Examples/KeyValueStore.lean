@@ -153,17 +153,22 @@ inductive EvalStateApiCall : List (String × String) → (StateAPICall × StateR
     LookupKV s ((.Failure "no such key"), k, 0, v) ->
     EvalStateApiCall s ((.Delete k), (.Failure "no such key"), s)
 
-inductive GetBucket : List (Nat × (List (String × String))) → (Nat × List (String × String)) → Prop where
+/-- `GetBucket s (n, x)` holds if the bucket store `s` contains a bucket with identifier `n` and contents `x`. -/
+inductive GetBucket : List (Nat × List (String × String)) → (Nat × List (String × String)) → Prop where
 | GBFound : forall n x s, GetBucket ((n, x)::s) (n, x)
 | GBNext : forall n n' x x' s,
     n != n' ->
     GetBucket s (n, x) ->
     GetBucket ((n', x')::s) (n, x)
 
-def addBucket (n : Nat) (s : List (Nat × (List α))) : List (Nat × (List α)) :=
+/-- Add a new bucket with identifier `n` and empty contents to the K/V store `s`. -/
+def addBucket (n : Nat) (s : List (Nat × List α)) : List (Nat × (List α)) :=
   (n, [])::s
 
-def removeBucket (n : Nat) (s : List (Nat × (List α))) : Option (List (Nat × List α)) :=
+/-- Remove the bucket with identifier `n` from the K/V store `s`.
+    Returns `some s'` where `s'` is the store with the bucket removed,
+    or `none` if no such bucket exists. -/
+def removeBucket (n : Nat) (s : List (Nat × List α)) : Option (List (Nat × List α)) :=
   match s with
   | [] => none
   | (n', x)::s' =>
@@ -173,7 +178,9 @@ def removeBucket (n : Nat) (s : List (Nat × (List α))) : Option (List (Nat × 
         | none => none
         | some s'' => some ((n', x)::s'')
 
-def updateBucket (n : Nat) (s : List (Nat × (List α))) (x : List α) : Option (List (Nat × List α)) :=
+/-- Update the contents of bucket with identifier `n` in store `s` to contain `x`.
+    Returns `some s'` where `s'` is the updated store, or `none` if no such bucket exists. -/
+def updateBucket (n : Nat) (s : List (Nat × List α)) (x : List α) : Option (List (Nat × List α)) :=
   match s with
   | [] => none
   | (n', x')::s' =>
@@ -185,7 +192,8 @@ def updateBucket (n : Nat) (s : List (Nat × (List α))) (x : List α) : Option 
 
 /- Store API calls -/
 
-/-- TODO: Add failure cases -/
+/-- `EvalApiCall (n, s) (c, r, (n', s'))` holds if evaluating API call `c` on state `(n, s)`
+    produces result `r` and new state `(n', s')`, where `n` is the next bucket ID and `s` is the resultant store. -/
 inductive EvalApiCall : Nat × List (Nat × List (String × String)) → (APICall × Result × (Nat × List (Nat × List (String × String)))) → Prop where
 | ESCreate : forall n s s',
     addBucket n s = s' ->
