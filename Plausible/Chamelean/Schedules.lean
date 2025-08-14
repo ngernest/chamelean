@@ -193,28 +193,23 @@ def updateSource (k : UnknownMap) (src : Source) : UnifyM Source := do
 
 /-- Updates a list of `ScheduleSteps` with the result of unification -/
 def updateScheduleSteps (scheduleSteps : List ScheduleStep) : UnifyM (List ScheduleStep) := do
-  logWarning m!"updating schedule w/ unification results..."
   UnifyM.withConstraints $ fun k => scheduleSteps.mapM (fun step =>
     match step with
     | .Match u p => do
-      logWarning m!"inside Match case"
       let updatedScrutinee ← UnifyM.findCanonicalUnknown k u
       let updatedPattern ← UnifyM.updatePattern k p
       return .Match updatedScrutinee updatedPattern
     | .Unconstrained u src producerSort => do
-      logWarning m!"inside Unconstrained case"
       let updatedUnknown ← UnifyM.findCanonicalUnknown k u
       let updatedSrc ← updateSource k src
       return .Unconstrained updatedUnknown updatedSrc producerSort
     | .SuchThat unknownsAndTypes src dst => do
-      logWarning m!"inside SuchThat case"
       let updatedUnknownsAndTypes ← unknownsAndTypes.mapM (fun (u, ty) => do
         let u' ← UnifyM.findCanonicalUnknown k u
         return (u', ty))
       let updatedSource ← updateSource k src
       return .SuchThat updatedUnknownsAndTypes updatedSource dst
     | .Check src polarity => do
-      logWarning m!"inside check case of updateScheduleSteps..."
       let updatedSrc ← updateSource k src
       return .Check updatedSrc polarity)
 

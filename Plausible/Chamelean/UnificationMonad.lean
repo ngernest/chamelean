@@ -363,7 +363,6 @@ namespace UnifyM
       - Note: this function corresponds to `correct_var` in the QuickChick code.  -/
   partial def findCanonicalUnknown (k : UnknownMap) (u : Unknown) : UnifyM Unknown :=
     try (do
-      logWarning m!"inside updateUnknown with u = {u}"
       let r ← UnifyM.findCorrespondingRange k u
       match r with
       | .Unknown u' => findCanonicalUnknown k u'
