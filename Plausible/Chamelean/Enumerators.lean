@@ -46,6 +46,20 @@ instance : Monad Enumerator where
 def failEnum : Enumerator α :=
   fun _ => .lnil
 
+/-- `EnumSizedSuchThat` instance for equality propositions
+     where a variable `x` is left-equal to some value `val`.
+    (Note: `val` can be the result of a fully-applied function application,
+     which is typically how this typeclass is used!) -/
+instance {α : Type} [BEq α] {val : α} : EnumSizedSuchThat α (fun x => x = val) where
+  enumSizedST _ := return val
+
+/-- `EnumSizedSuchThat` instance for equality propositions
+     where a variable `x` is right-equal to some value `val`.
+     (Note: `val` can be the result of a fully-applied function application,
+     which is typically how this typeclass is used!) -/
+instance {α : Type} [BEq α] {val : α} : EnumSizedSuchThat α (fun x => val = x) where
+  enumSizedST _ := return val
+
 /-- `Alternative` instance for `Enumerator`s.
     Note:
     - `e1 <|> e2` is not fair and is biased towards `e1`, i.e. all elements of `e1` will

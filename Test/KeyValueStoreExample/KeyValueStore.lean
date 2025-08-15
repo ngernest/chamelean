@@ -208,7 +208,7 @@ def updateBucket (n : Nat) (s : List (Nat × List α)) (x : List α) : Option (L
     produces result `r` and new state `(n', s')`, where `n` is the next bucket ID and `s` is the resultant store. -/
 inductive EvalApiCall : Nat × List (Nat × List (String × String)) → (APICall × Result × (Nat × List (Nat × List (String × String)))) → Prop where
 | ESCreate : forall n s s',
-    addBucket n s = s' →
+    s' = addBucket n s →
     EvalApiCall (n, s) (APICall.CreateBucket, Result.Created n, (Nat.succ n, s'))
 | ESOp : forall n n' c r s s' x x',
     GetBucket s (n', x) →
