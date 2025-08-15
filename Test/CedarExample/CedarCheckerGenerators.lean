@@ -1,4 +1,4 @@
-import Plausible.Chamelean.Examples.Cedar
+import Test.CedarExample.Cedar
 import Plausible.Arbitrary
 import Plausible.DeriveArbitrary
 import Plausible.Chamelean.GeneratorCombinators

@@ -620,7 +620,7 @@ def mergeExprs (xs : PathSet) (ys : PathSet) : PathSet :=
 -- Typing: Expressions
 -------------------------
 
-/-- `HasType a v (e,x) t` is equivalent to a,v |- e : ;xt in the paper. This is
+/-- `HasType a v (e,x) t` is equivalent to `a,v ⊢ e : t ; x` in the paper. This is
   Written assuming we will derive a generator for (e,x) given a v and t (ideally e and x would be their own parameters) -/
 inductive HasType : PathSet → Environment → (CedarExpr × PathSet) → CedarType → Prop where
 | TLitFalse : ∀ a V P,

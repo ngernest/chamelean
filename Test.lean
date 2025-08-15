@@ -71,3 +71,7 @@ import Test.DeriveEnumSuchThat.DerivePermutationEnumerator
 -- Key Value Store Example
 import Test.KeyValueStoreExample.KeyValueStore
 import Test.KeyValueStoreExample.TestKeyValueStoreCheckerGenerators
+
+-- Cedar Example
+import Test.CedarExample.Cedar
+import Test.CedarExample.CedarCheckerGenerators
