@@ -8,6 +8,12 @@ import Plausible.Chamelean.DeriveConstrainedProducer
 
 open Plausible
 
+-- Suppress warnings for unused variables in derived generators/checkers
+set_option linter.unusedVariables false
+
+-- Suppress warnings for redundant pattern-match cases in derived generators/checkers
+set_option match.ignoreUnusedAlts true
+
 /-- We override the default `Arbitrary` instance for `String`s with our custom generator -/
 instance : Arbitrary String where
   arbitrary := GeneratorCombinators.elementsWithDefault
@@ -595,3 +601,151 @@ info: Try this generator: instance : ArbitrarySizedSuchThat (List (String × Boo
 -/
 #guard_msgs(info, drop warning) in
 #derive_generator (fun (attrs : List (String × Bool × CedarType)) => WfAttrs ns attrs)
+
+---------------------------------------------------------------------
+-- Checker & Generator for well-formed ETs (`EntitySchemaEntry`)
+---------------------------------------------------------------------
+/--
+info: Try this checker: instance : DecOpt (WfET ns_1 et_1) where
+  decOpt :=
+    let rec aux_dec (initSize : Nat) (size : Nat) (ns_1 : List EntityName) (et_1 : EntitySchemaEntry) : Option Bool :=
+      match size with
+      | Nat.zero =>
+        DecOpt.checkerBacktrack
+          [fun _ =>
+            match et_1 with
+            | EntitySchemaEntry.MkEntitySchemaEntry ancs attrs =>
+              DecOpt.andOptList
+                [DecOpt.decOpt (DefinedNames ns_1 ancs) initSize, DecOpt.decOpt (WfAttrs ns_1 attrs) initSize]
+            | _ => Option.some Bool.false]
+      | Nat.succ size' =>
+        DecOpt.checkerBacktrack
+          [fun _ =>
+            match et_1 with
+            | EntitySchemaEntry.MkEntitySchemaEntry ancs attrs =>
+              DecOpt.andOptList
+                [DecOpt.decOpt (DefinedNames ns_1 ancs) initSize, DecOpt.decOpt (WfAttrs ns_1 attrs) initSize]
+            | _ => Option.some Bool.false,
+            ]
+    fun size => aux_dec size size ns_1 et_1
+-/
+#guard_msgs(info, drop warning) in
+#derive_checker (WfET ns et)
+
+/--
+info: Try this generator: instance : ArbitrarySizedSuchThat EntitySchemaEntry (fun et_1 => WfET ns_1 et_1) where
+  arbitrarySizedST :=
+    let rec aux_arb (initSize : Nat) (size : Nat) (ns_1 : List EntityName) : OptionT Plausible.Gen EntitySchemaEntry :=
+      match size with
+      | Nat.zero =>
+        OptionTGen.backtrack
+          [(1, do
+              let ancs ← ArbitrarySizedSuchThat.arbitrarySizedST (fun ancs => DefinedNames ns_1 ancs) initSize;
+              do
+                let attrs ← ArbitrarySizedSuchThat.arbitrarySizedST (fun attrs => WfAttrs ns_1 attrs) initSize;
+                return EntitySchemaEntry.MkEntitySchemaEntry ancs attrs)]
+      | Nat.succ size' =>
+        OptionTGen.backtrack
+          [(1, do
+              let ancs ← ArbitrarySizedSuchThat.arbitrarySizedST (fun ancs => DefinedNames ns_1 ancs) initSize;
+              do
+                let attrs ← ArbitrarySizedSuchThat.arbitrarySizedST (fun attrs => WfAttrs ns_1 attrs) initSize;
+                return EntitySchemaEntry.MkEntitySchemaEntry ancs attrs),
+            ]
+    fun size => aux_arb size size ns_1
+-/
+#guard_msgs(info, drop warning) in
+#derive_generator (fun (et : EntitySchemaEntry) => WfET ns et)
+
+/--
+info: Try this checker: instance : DecOpt (WfETS ns_1 ns0_1 ets_1) where
+  decOpt :=
+    let rec aux_dec (initSize : Nat) (size : Nat) (ns_1 : List EntityName) (ns0_1 : List EntityName)
+      (ets_1 : List (EntityName × EntitySchemaEntry)) : Option Bool :=
+      match size with
+      | Nat.zero =>
+        DecOpt.checkerBacktrack
+          [fun _ =>
+            match ets_1 with
+            | List.cons (Prod.mk u_3 et) (List.nil) =>
+              match ns0_1 with
+              | List.cons n (List.nil) =>
+                DecOpt.andOptList
+                  [DecOpt.decOpt (BEq.beq u_3 n) initSize,
+                    DecOpt.andOptList
+                      [DecOpt.decOpt (DefinedName ns_1 n) initSize, DecOpt.decOpt (WfET ns_1 et) initSize]]
+              | _ => Option.some Bool.false
+            | _ => Option.some Bool.false]
+      | Nat.succ size' =>
+        DecOpt.checkerBacktrack
+          [fun _ =>
+            match ets_1 with
+            | List.cons (Prod.mk u_3 et) (List.nil) =>
+              match ns0_1 with
+              | List.cons n (List.nil) =>
+                DecOpt.andOptList
+                  [DecOpt.decOpt (BEq.beq u_3 n) initSize,
+                    DecOpt.andOptList
+                      [DecOpt.decOpt (DefinedName ns_1 n) initSize, DecOpt.decOpt (WfET ns_1 et) initSize]]
+              | _ => Option.some Bool.false
+            | _ => Option.some Bool.false,
+            fun _ =>
+            match ets_1 with
+            | List.cons (Prod.mk u_3 et) ets =>
+              match ns0_1 with
+              | List.cons n ns0 =>
+                DecOpt.andOptList
+                  [DecOpt.decOpt (BEq.beq u_3 n) initSize,
+                    DecOpt.andOptList
+                      [DecOpt.decOpt (DefinedName ns_1 n) initSize,
+                        DecOpt.andOptList [DecOpt.decOpt (WfET ns_1 et) initSize, aux_dec initSize size' ns_1 ns0 ets]]]
+              | _ => Option.some Bool.false
+            | _ => Option.some Bool.false]
+    fun size => aux_dec size size ns_1 ns0_1 ets_1
+-/
+#guard_msgs(info, drop warning) in
+#derive_checker (WfETS ns ns0 ets)
+
+/--
+info: Try this generator: instance : ArbitrarySizedSuchThat (List (EntityName × EntitySchemaEntry)) (fun ets_1 => WfETS ns_1 ns0_1 ets_1) where
+  arbitrarySizedST :=
+    let rec aux_arb (initSize : Nat) (size : Nat) (ns_1 : List EntityName) (ns0_1 : List EntityName) :
+      OptionT Plausible.Gen (List (EntityName × EntitySchemaEntry)) :=
+      match size with
+      | Nat.zero =>
+        OptionTGen.backtrack
+          [(1,
+              match ns0_1 with
+              | List.cons n (List.nil) =>
+                match DecOpt.decOpt (DefinedName ns_1 n) initSize with
+                | Option.some Bool.true => do
+                  let et ← ArbitrarySizedSuchThat.arbitrarySizedST (fun et => WfET ns_1 et) initSize;
+                  return List.cons (Prod.mk n et) (List.nil)
+                | _ => OptionT.fail
+              | _ => OptionT.fail)]
+      | Nat.succ size' =>
+        OptionTGen.backtrack
+          [(1,
+              match ns0_1 with
+              | List.cons n (List.nil) =>
+                match DecOpt.decOpt (DefinedName ns_1 n) initSize with
+                | Option.some Bool.true => do
+                  let et ← ArbitrarySizedSuchThat.arbitrarySizedST (fun et => WfET ns_1 et) initSize;
+                  return List.cons (Prod.mk n et) (List.nil)
+                | _ => OptionT.fail
+              | _ => OptionT.fail),
+            (Nat.succ size',
+              match ns0_1 with
+              | List.cons n ns0 =>
+                match DecOpt.decOpt (DefinedName ns_1 n) initSize with
+                | Option.some Bool.true => do
+                  let et ← ArbitrarySizedSuchThat.arbitrarySizedST (fun et => WfET ns_1 et) initSize;
+                  do
+                    let ets ← aux_arb initSize size' ns_1 ns0;
+                    return List.cons (Prod.mk n et) ets
+                | _ => OptionT.fail
+              | _ => OptionT.fail)]
+    fun size => aux_arb size size ns_1 ns0_1
+-/
+#guard_msgs(info, drop warning) in
+#derive_generator (fun (ets : List (EntityName × EntitySchemaEntry)) => WfETS ns ns0 ets)
