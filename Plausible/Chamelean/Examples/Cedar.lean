@@ -603,3 +603,211 @@ def mergeExprs (xs : PathSet) (ys : PathSet) : PathSet :=
     match ys with
     | PathSet.allpaths => PathSet.allpaths
     | PathSet.somepaths ys0 => PathSet.somepaths (aux xs0 ys0)
+
+-------------------------
+-- Typing: Expressions
+-------------------------
+
+/-- `HasType a v (e,x) t` is equivalent to a,v |- e : ;xt in the paper. This is
+  Written assuming we will derive a generator for (e,x) given a v and t (ideally e and x would be their own parameters) -/
+inductive HasType : PathSet → Environment → (Expr × PathSet) → CedarType → Prop where
+| TLitFalse : ∀ a V P,
+    HasTypePrim V P (CedarType.boolType BoolType.ff) →
+    HasType a V ((Expr.lit P), PathSet.allpaths) (CedarType.boolType BoolType.ff)
+| TLitOther : ∀ a V P T,
+    ¬(T = (CedarType.boolType BoolType.ff)) →
+    HasTypePrim V P T →
+    HasType a V ((Expr.lit P), PathSet.somepaths []) T
+| TVar : ∀ a V X T,
+    HasTypeVar V X T →
+    HasType a V ((Expr.var X), PathSet.somepaths []) T
+| TCondTrue : ∀ a V E1 E2 E3 x1 x2 T2,
+    HasType a V (E1, x1) (CedarType.boolType BoolType.tt) →
+    HasType (mergeExprs a x1) V (E2, x2) T2 →
+    HasType a V ((Expr.ite E1 E2 E3), (mergeExprs x1 x2)) T2
+| TCondFalse : ∀ a V E1 E2 E3 x1 x3 T3,
+    HasType a V (E1, x1) (CedarType.boolType BoolType.ff) →
+    HasType a V (E3, x3) T3 →
+    HasType a V ((Expr.ite E1 E2 E3), x3) T3
+| TCondBool : ∀ a V E1 E2 E3 x1 x2 x3 T2 T3 T,
+    SubType T2 T → SubType T3 T →
+    HasType a V (E1, x1) (CedarType.boolType BoolType.anyBool) →
+    HasType (mergeExprs a x1) V (E2, x2) T2 →
+    HasType a V (E3, x3) T3 →
+    HasType a V ((Expr.ite E1 E2 E3), (interExprs (mergeExprs x1 x2) x3)) T
+| TAnd : ∀ a x V E1 E2 T1,
+    HasType a V ((Expr.ite E1 E2 (Expr.lit (Prim.boolean false))), x) T1 →
+    HasType a V ((Expr.andExpr E1 E2), x) T1
+| TOr : ∀ a x V E1 E2 T1,
+    HasType a V ((Expr.ite E1 (Expr.lit (Prim.boolean true)) E2), x) T1 →
+    HasType a V ((Expr.orExpr E1 E2), x) T1
+| TNotAny : ∀ a x V e,
+    HasType a V (e, x) (CedarType.boolType BoolType.anyBool) →
+    HasType a V ((Expr.unaryApp UnaryOp.not e), PathSet.somepaths []) (CedarType.boolType BoolType.anyBool)
+| TNotTrue : ∀ a x V e,
+    HasType a V (e, x) (CedarType.boolType BoolType.tt) →
+    HasType a V ((Expr.unaryApp UnaryOp.not e), PathSet.allpaths) (CedarType.boolType BoolType.ff)
+| TNotFalse : ∀ a x V e,
+    HasType a V (e, x) (CedarType.boolType BoolType.ff) →
+    HasType a V ((Expr.unaryApp UnaryOp.not e), PathSet.somepaths []) (CedarType.boolType BoolType.tt)
+| TNeg : ∀ a V x e,
+    HasType a V (e, x) CedarType.intType →
+    HasType a V ((Expr.unaryApp UnaryOp.neg e), PathSet.somepaths []) CedarType.intType
+| TLike : ∀ a V e x P,
+    HasType a V (e, x) CedarType.stringType →
+    HasType a V ((Expr.unaryApp (UnaryOp.like P) e), PathSet.somepaths []) (CedarType.boolType BoolType.anyBool)
+| TIsTrue : ∀ a x V e n ets acts R ns,
+    V = (Environment.MkEnvironment (Schema.MkSchema ets acts) R) →
+    DefinedEntities ets ns →
+    WfCedarType ns (CedarType.entityType n) →
+    HasType a V (e, x) (CedarType.entityType n) →
+    HasType a V ((Expr.unaryApp (UnaryOp.is n) e), PathSet.somepaths []) (CedarType.boolType BoolType.tt)
+| TIsFalse : ∀ a x V e N1 N2 ets acts R ns,
+    V = (Environment.MkEnvironment (Schema.MkSchema ets acts) R) →
+    DefinedEntities ets ns →
+    WfCedarType ns (CedarType.entityType N1) →
+    HasType a V (e, x) (CedarType.entityType N2) →
+    ¬(N1 = N2) →
+    HasType a V ((Expr.unaryApp (UnaryOp.is N1) e), PathSet.allpaths) (CedarType.boolType BoolType.ff)
+| TEqLitTrue : ∀ a V P,
+    HasType a V ((Expr.binaryApp BinaryOp.equals (Expr.lit P) (Expr.lit P)), PathSet.somepaths []) (CedarType.boolType BoolType.tt)
+| TEqLitFalse : ∀ a V P1 P2,
+    ¬(P1 = P2) →
+    HasType a V ((Expr.binaryApp BinaryOp.equals (Expr.lit P1) (Expr.lit P2)), PathSet.allpaths) (CedarType.boolType BoolType.ff)
+| TEqEntity : ∀ a x1 x2 V E1 N1 E2 N2 ns ets acts R,
+    V = (Environment.MkEnvironment (Schema.MkSchema ets acts) R) →
+    DefinedEntities ets ns →
+    WfCedarType ns (CedarType.entityType N1) →
+    WfCedarType ns (CedarType.entityType N2) →
+    ¬(N1 = N2) →
+    HasType a V (E1, x1) (CedarType.entityType N1) →
+    HasType a V (E2, x2) (CedarType.entityType N2) →
+    HasType a V ((Expr.binaryApp BinaryOp.equals E1 E2), PathSet.allpaths) (CedarType.boolType BoolType.ff)
+| TEqAny : ∀ a x1 x2 V E1 E2 T T1 T2 ets acts R ns,
+    V = (Environment.MkEnvironment (Schema.MkSchema ets acts) R) →
+    DefinedEntities ets ns →
+    WfCedarType ns T →
+    SubType T1 T → SubType T2 T →
+    HasType a V (E1, x1) T1 →
+    HasType a V (E2, x2) T2 →
+    HasType a V ((Expr.binaryApp BinaryOp.equals E1 E2), PathSet.somepaths []) (CedarType.boolType BoolType.anyBool)
+/-- LATER: Following two rules could look in request env for more precision -/
+| TInEntity : ∀ a x1 x2 V E1 E2 N1 N2 ns ets acts R,
+    V = (Environment.MkEnvironment (Schema.MkSchema ets acts) R) →
+    DefinedEntities ets ns →
+    WfCedarType ns (CedarType.entityType N1) →
+    WfCedarType ns (CedarType.entityType N2) →
+    HasType a V (E1, x1) (CedarType.entityType N1) →
+    HasType a V (E2, x2) (CedarType.entityType N2) →
+    HasType a V ((Expr.binaryApp BinaryOp.mem E1 E2), PathSet.somepaths []) (CedarType.boolType BoolType.anyBool)
+| TInEntitySet : ∀ a x1 x2 V E1 E2 N1 N2 ns ets acts R,
+    V = (Environment.MkEnvironment (Schema.MkSchema ets acts) R) →
+    DefinedEntities ets ns →
+    WfCedarType ns (CedarType.entityType N1) →
+    WfCedarType ns (CedarType.entityType N2) →
+    HasType a V (E1, x1) (CedarType.entityType N1) →
+    HasType a V (E2, x2) (CedarType.setType (CedarType.entityType N2)) →
+    HasType a V ((Expr.binaryApp BinaryOp.mem E1 E2), PathSet.somepaths []) (CedarType.boolType BoolType.anyBool)
+| TLessThan : ∀ a x1 x2 V E1 E2,
+    HasType a V (E1, x1) CedarType.intType →
+    HasType a V (E2, x2) CedarType.intType →
+    HasType a V ((Expr.binaryApp BinaryOp.less E1 E2), PathSet.somepaths []) (CedarType.boolType BoolType.anyBool)
+| TLessEqualThan : ∀ a x1 x2 V E1 E2,
+    HasType a V (E1, x1) CedarType.intType →
+    HasType a V (E2, x2) CedarType.intType →
+    HasType a V ((Expr.binaryApp BinaryOp.lessEq E1 E2), PathSet.somepaths []) (CedarType.boolType BoolType.anyBool)
+| TAdd : ∀ a x1 x2 V E1 E2,
+    HasType a V (E1, x1) CedarType.intType →
+    HasType a V (E2, x2) CedarType.intType →
+    HasType a V ((Expr.binaryApp BinaryOp.add E1 E2), PathSet.somepaths []) CedarType.intType
+| TSub : ∀ a x1 x2 V E1 E2,
+    HasType a V (E1, x1) CedarType.intType →
+    HasType a V (E2, x2) CedarType.intType →
+    HasType a V ((Expr.binaryApp BinaryOp.sub E1 E2), PathSet.somepaths []) CedarType.intType
+| TMul : ∀ a x1 x2 V E1 E2,
+    HasType a V (E1, x1) CedarType.intType →
+    HasType a V (E2, x2) CedarType.intType →
+    HasType a V ((Expr.binaryApp BinaryOp.mul E1 E2), PathSet.somepaths []) CedarType.intType
+| TContains : ∀ a x1 x2 V E1 E2 ets acts R ns T1 T2 T,
+    V = (Environment.MkEnvironment (Schema.MkSchema ets acts) R) →
+    DefinedEntities ets ns →
+    WfCedarType ns T →
+    SubType T1 T → SubType T2 T →
+    HasType a V (E1, x1) T1 →
+    HasType a V (E2, x2) (CedarType.setType T2) →
+    HasType a V ((Expr.binaryApp BinaryOp.contains E1 E2), PathSet.somepaths []) (CedarType.boolType BoolType.anyBool)
+| TContainsAll : ∀ a x1 x2 V E1 E2 ets acts R ns T1 T2 T,
+    V = (Environment.MkEnvironment (Schema.MkSchema ets acts) R) →
+    DefinedEntities ets ns →
+    WfCedarType ns T →
+    SubType T1 T → SubType T2 T →
+    HasType a V (E1, x1) (CedarType.setType T1) →
+    HasType a V (E2, x2) (CedarType.setType T2) →
+    HasType a V ((Expr.binaryApp BinaryOp.containsAll E1 E2), PathSet.somepaths []) (CedarType.boolType BoolType.anyBool)
+| TContainsAny : ∀ a x1 x2 V E1 E2 ets acts R ns T1 T2 T,
+    V = (Environment.MkEnvironment (Schema.MkSchema ets acts) R) →
+    DefinedEntities ets ns →
+    WfCedarType ns T →
+    SubType T1 T → SubType T2 T →
+    HasType a V (E1, x1) (CedarType.setType T1) →
+    HasType a V (E2, x2) (CedarType.setType T2) →
+    HasType a V ((Expr.binaryApp BinaryOp.containsAny E1 E2), PathSet.somepaths []) (CedarType.boolType BoolType.anyBool)
+| TRecNil : ∀ a V, HasType a V (Expr.recExprNil, PathSet.somepaths []) CedarType.recordTypeNil
+| TRecCons : ∀ a x rx V e i T R b TR,
+    HasType a V (e, x) T →
+    RecordType TR →
+    HasType a V (R, rx) TR →
+    HasType a V ((Expr.recExprCons i e R), PathSet.somepaths []) (CedarType.recordTypeCons i b T TR)
+| TSetSingle : ∀ a x V e T,
+    HasType a V (e, x) T →
+    HasType a V ((Expr.setExprCons e Expr.setExprNil), PathSet.somepaths []) (CedarType.setType T)
+| TSetMany : ∀ a x rx V e T R,
+    HasType a V (e, x) T →
+    HasType a V (R, rx) (CedarType.setType T) →
+    HasType a V ((Expr.setExprCons e R), PathSet.somepaths []) (CedarType.setType T)
+| THasAttrRecOpt : ∀ a x V e F T TE ns ets acts R,
+    V = (Environment.MkEnvironment (Schema.MkSchema ets acts) R) →
+    DefinedEntities ets ns →
+    BindAttrType ns (TE, F, true) T →
+    HasType a V (e, x) TE →
+    HasType a V ((Expr.hasAttr e F), (PathSet.somepaths [Expr.getAttr e F])) (CedarType.boolType BoolType.anyBool)
+| THasAttrRecReq : ∀ a x V e F T TE ns ets acts R,
+    V = (Environment.MkEnvironment (Schema.MkSchema ets acts) R) →
+    DefinedEntities ets ns →
+    BindAttrType ns (TE, F, false) T →
+    HasType a V (e, x) TE →
+    HasType a V ((Expr.hasAttr e F), (PathSet.somepaths [Expr.getAttr e F])) (CedarType.boolType BoolType.tt)
+| TGetAttrRecOpt : ∀ a x V e F T TE ns ets acts R,
+    V = (Environment.MkEnvironment (Schema.MkSchema ets acts) R) →
+    DefinedEntities ets ns →
+    BindAttrType ns (TE, F, true) T →
+    HasType a V (e, x) TE →
+    validPathExpr (Expr.getAttr e F) a = true →
+    HasType a V ((Expr.getAttr e F), PathSet.somepaths []) T
+| TGetAttrRecReq : ∀ a x V e F T TE ns ets acts R,
+    V = (Environment.MkEnvironment (Schema.MkSchema ets acts) R) →
+    DefinedEntities ets ns →
+    BindAttrType ns (TE, F, false) T →
+    HasType a V (e, x) TE →
+    HasType a V ((Expr.getAttr e F), PathSet.somepaths []) T
+| THasAttrEntityOpt : ∀ a x V ets acts R e n fn T,
+    V = (Environment.MkEnvironment (Schema.MkSchema ets acts) R) →
+    GetEntityAttr ets (n, fn, true) T →
+    HasType a V (e, x) (CedarType.entityType n) →
+    HasType a V ((Expr.hasAttr e fn), PathSet.somepaths [Expr.getAttr e fn]) (CedarType.boolType BoolType.anyBool)
+| THasAttrEntityReq : ∀ a x V ets acts R e n fn T,
+    V = (Environment.MkEnvironment (Schema.MkSchema ets acts) R) →
+    GetEntityAttr ets (n, fn, false) T →
+    HasType a V (e, x) (CedarType.entityType n) →
+    HasType a V ((Expr.hasAttr e fn), PathSet.somepaths [Expr.getAttr e fn]) (CedarType.boolType BoolType.tt)
+| TGetAttrEntityOpt : ∀ a x V ets acts R e n fn T,
+    V = (Environment.MkEnvironment (Schema.MkSchema ets acts) R) →
+    GetEntityAttr ets (n, fn, true) T →
+    HasType a V (e, x) (CedarType.entityType n) →
+    validPathExpr (Expr.getAttr e fn) a = true →
+    HasType a V ((Expr.getAttr e fn), PathSet.somepaths []) T
+| TGetAttrEntityReq : ∀ a x V ets acts R e n fn T,
+    V = (Environment.MkEnvironment (Schema.MkSchema ets acts) R) →
+    GetEntityAttr ets (n, fn, false) T →
+    HasType a V (e, x) (CedarType.entityType n) →
+    HasType a V ((Expr.getAttr e fn), PathSet.somepaths []) T
