@@ -18,7 +18,7 @@ set_option match.ignoreUnusedAlts true
 
 /-- We override the default `Arbitrary` for `String`s so that we only produce strings of length 1
     where the string is a single letter from `A` to `I` -/
-instance : Arbitrary String where
+instance instKeyValueStoreArbitraryString : Arbitrary String where
   arbitrary := GeneratorCombinators.elementsWithDefault "A" ["A", "B", "C", "D", "E", "F", "G", "H", "I"]
 
 ---------------------------------------------------------------------------------------------------------------------------------------

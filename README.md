@@ -127,16 +127,14 @@ We provide a command elaborator which elaborates the `#derive_checker` command:
 - Run `lake test` to check that the derived generators in [`Test`](./Test/) typecheck, and that the code for the derived generators match the expected output.
 - See [`DeriveBSTGenerator.lean`](./Test/DeriveArbitrarySuchThat/DeriveBSTGenerator.lean) & [`DeriveBalancedTreeGenerator.lean`](./Test/DeriveArbitrarySuchThat/DeriveBalancedTreeGenerator.lean) for examples of snapshot tests. Follow the template in these two files to add new snapshot test file, and remember to import the new test file in [`Test.lean`](./Test.lean) afterwards.
 
-**Common Definitions**:
-- [`BinaryTree.lean`](./Test/CommonDefinitions/BinaryTree.lean): Binary tree datatype with `BST` (Binary Search Tree) and `Between` relations
-- [`FunctionCallInConclusion.lean`](./Test/CommonDefinitions/FunctionCallInConclusion.lean): Example inductive relation with function calls in constructor conclusions 
-- [`ListRelations.lean`](./Test/CommonDefinitions/ListRelations.lean): Various inductive relations over lists, some of which require pattern-matching on multiple inputs 
-- [`Permutation.lean`](./Test/CommonDefinitions/Permutation.lean): Inductive relation for list permutations
-- [`STLCDefinitions.lean`](./Test/CommonDefinitions/STLCDefinitions.lean): Simply-Typed Lambda Calculus (STLC) definitions including types, terms, typing judgments, and lookup relations
-
 **Key Value Store Example**:
 - [`KeyValueStore.lean`](./Test/KeyValueStoreExample/KeyValueStore.lean): Definitions for a hypothetical key-value store, in which inductive types are used to encode API calls and K/V states, and inductive relations are used to define API call semantics
 - [`TestKeyValueStoreCheckerGenerators.lean`](./Test/KeyValueStoreExample/TestKeyValueStoreCheckerGenerators.lean): The derived checkers & generators for the K/V store example (in particular, the derived generator produces well-formed sequences of API calls)
+
+**Cedar Example**:
+- [`Cedar.lean`](./Test/CedarExample/Cedar.lean): Lean formalization of a subset of the [Cedar policy language (OOPSLA '24)](https://dl.acm.org/doi/10.1145/3649835), adapted from Mike Hicks's Coq formalization
+- [`CedarCheckerGenerators.lean`](./Test/CedarExample/CedarCheckerGenerators.lean): Snapshot tests for derived checkers & generators for Cedar terms / types / schemas 
+- [`CedarWellTypedTermGenerator.lean`](./Test/CedarExample/CedarWellTypedTermGenerator.lean): Example generator for well-typed Cedar expressions
 
 **Tests for Unconstrained Generators (`#derive_arbitrary`)**:
 - [`BitVecStructureTest.lean`](./Test/DeriveArbitrary/BitVecStructureTest.lean): Tests for structures with dependently-typed `BitVec` arguments
@@ -193,6 +191,13 @@ We provide a command elaborator which elaborates the `#derive_checker` command:
 **Enumerator Infrastructure Tests**:
 - [`EnumInstancesTest.lean`](./Test/Enum/EnumInstancesTest.lean): Tests for basic enumerator instances on Nat, Bool, pairs, sums, lists, etc.
 
-**Plausible Tests**:
+**Auxiliary definitions for snapshot tests**:
+- [`BinaryTree.lean`](./Test/CommonDefinitions/BinaryTree.lean): Binary tree datatype with `BST` (Binary Search Tree) and `Between` relations
+- [`FunctionCallInConclusion.lean`](./Test/CommonDefinitions/FunctionCallInConclusion.lean): Example inductive relation with function calls in constructor conclusions 
+- [`ListRelations.lean`](./Test/CommonDefinitions/ListRelations.lean): Various inductive relations over lists, some of which require pattern-matching on multiple inputs 
+- [`Permutation.lean`](./Test/CommonDefinitions/Permutation.lean): Inductive relation for list permutations
+- [`STLCDefinitions.lean`](./Test/CommonDefinitions/STLCDefinitions.lean): Simply-Typed Lambda Calculus (STLC) definitions including types, terms, typing judgments, and lookup relations
+
+**Plausible Tests** (inherited from the original Plausible repo):
 - [`Tactic.lean`](./Test/Tactic.lean): Tests the `plausible` tactic on core Lean types
 - [`Testable.lean`](./Test/Testable.lean): Tests for the `Testable` typeclass infrastructure with custom types
