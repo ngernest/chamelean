@@ -59,33 +59,34 @@ inductive BinaryOp where
 | containsAny
 deriving Repr, BEq
 
-/-- Cedar expressions
-    - Note: we "inlines" list constructors for sets and records to avoid issue with mutual recursion in a list/generic type -/
-inductive Expr where
+/-- Cedar expressions. Note:
+    - We call this datatype `CedarExpr` to avoid naming conflicts with Lean's `Expr` datatype
+    - We "inline" list constructors for sets and records to avoid issue with mutual recursion in a list/generic type -/
+inductive CedarExpr where
 | lit (p : Prim)
 | var (v : Var)
-| ite (cond : Expr) (thenExpr : Expr) (elseExpr : Expr)
-| andExpr (a : Expr) (b : Expr)
-| orExpr (a : Expr) (b : Expr)
-| unaryApp (op : UnaryOp) (expr : Expr)
-| binaryApp (op : BinaryOp) (a : Expr) (b : Expr)
-| getAttr (expr : Expr) (attr : String)
-| hasAttr (expr : Expr) (attr : String)
+| ite (cond : CedarExpr) (thenExpr : CedarExpr) (elseExpr : CedarExpr)
+| andExpr (a : CedarExpr) (b : CedarExpr)
+| orExpr (a : CedarExpr) (b : CedarExpr)
+| unaryApp (op : UnaryOp) (expr : CedarExpr)
+| binaryApp (op : BinaryOp) (a : CedarExpr) (b : CedarExpr)
+| getAttr (expr : CedarExpr) (attr : String)
+| hasAttr (expr : CedarExpr) (attr : String)
 | setExprNil
-| setExprCons (e : Expr) (ls : Expr)
+| setExprCons (e : CedarExpr) (ls : CedarExpr)
 | recExprNil
-| recExprCons (s : String) (e : Expr) (attrs : Expr)
+| recExprCons (s : String) (e : CedarExpr) (attrs : CedarExpr)
 deriving BEq
 
 /-- Type of entity data.
     Precondition: the `Expr` argument should always be a record of values -/
 inductive EntityData where
-| MkEntityData : Expr → List EntityUID → EntityData
+| MkEntityData : CedarExpr → List EntityUID → EntityData
 deriving BEq
 
 /-- given `MkReq P A R C`, assumes that `RecordExpr C` and `Value C` hold --/
 inductive Request where
-| MkReq : EntityUID → EntityUID → EntityUID → Expr → Request
+| MkReq : EntityUID → EntityUID → EntityUID → CedarExpr → Request
 deriving BEq
 
 -------------------------------------------------
@@ -143,21 +144,21 @@ def stringOfPats (p : List PatElem) : String :=
   | p0::ps => stringOfPatElem p0 ++ stringOfPats ps
 
 /-- Converts an `Expr` to a string -/
-def stringOfExpr (e : Expr) : String :=
+def stringOfExpr (e : CedarExpr) : String :=
   match e with
-  | Expr.lit p => toString p
-  | Expr.var v => toString v
-  | Expr.ite cond thenExpr elseExpr =>
+  | CedarExpr.lit p => toString p
+  | CedarExpr.var v => toString v
+  | CedarExpr.ite cond thenExpr elseExpr =>
       "if (" ++ stringOfExpr cond ++ ") then (" ++ stringOfExpr thenExpr ++ ") else (" ++ stringOfExpr elseExpr ++ ")"
-  | Expr.andExpr a b => "(" ++ stringOfExpr a ++ ") && (" ++ stringOfExpr b ++ ")"
-  | Expr.orExpr a b => "(" ++ stringOfExpr a ++ ") || (" ++ stringOfExpr b ++ ")"
-  | Expr.unaryApp op expr =>
+  | CedarExpr.andExpr a b => "(" ++ stringOfExpr a ++ ") && (" ++ stringOfExpr b ++ ")"
+  | CedarExpr.orExpr a b => "(" ++ stringOfExpr a ++ ") || (" ++ stringOfExpr b ++ ")"
+  | CedarExpr.unaryApp op expr =>
     match op with
     | UnaryOp.not => "not (" ++ stringOfExpr expr ++ ")"
     | UnaryOp.neg => "- (" ++ stringOfExpr expr ++ ")"
     | UnaryOp.like ps => "(" ++ stringOfExpr expr ++ ") like \"" ++ stringOfPats ps ++ "\""
     | UnaryOp.is e => "is (" ++ toString e ++ ")"
-  | Expr.binaryApp op a b =>
+  | CedarExpr.binaryApp op a b =>
     let sa := "(" ++ stringOfExpr a ++ ")"
     let sb := "(" ++ stringOfExpr b ++ ")"
     match op with
@@ -171,17 +172,17 @@ def stringOfExpr (e : Expr) : String :=
     | BinaryOp.contains => sa ++ ".contains" ++ sb
     | BinaryOp.containsAll => sa ++ ".containsAll" ++ sb
     | BinaryOp.containsAny => sa ++ ".containsAny" ++ sb
-  | Expr.getAttr expr attr => "(" ++ stringOfExpr expr ++ ")." ++ attr
-  | Expr.hasAttr expr attr => "(" ++ stringOfExpr expr ++ ") has " ++ attr
-  | Expr.setExprNil => "nil"
-  | Expr.setExprCons e ls => "(" ++ stringOfExpr e ++ ")::" ++ stringOfExpr ls
-  | Expr.recExprNil => "{}"
-  | Expr.recExprCons s e attrs => "{ " ++ s ++ ": " ++ stringOfExpr e ++ " }" ++ stringOfExpr attrs
+  | CedarExpr.getAttr expr attr => "(" ++ stringOfExpr expr ++ ")." ++ attr
+  | CedarExpr.hasAttr expr attr => "(" ++ stringOfExpr expr ++ ") has " ++ attr
+  | CedarExpr.setExprNil => "nil"
+  | CedarExpr.setExprCons e ls => "(" ++ stringOfExpr e ++ ")::" ++ stringOfExpr ls
+  | CedarExpr.recExprNil => "{}"
+  | CedarExpr.recExprCons s e attrs => "{ " ++ s ++ ": " ++ stringOfExpr e ++ " }" ++ stringOfExpr attrs
 
-instance : ToString Expr where
+instance : ToString CedarExpr where
   toString := stringOfExpr
 
-instance : Repr Expr where
+instance : Repr CedarExpr where
   reprPrec e _ := toString e
 
 instance : ToString Request where
@@ -190,40 +191,40 @@ instance : ToString Request where
         "MkReq " ++ toString p ++ " " ++ toString a ++ " " ++ toString res ++ " " ++ toString c
 
 /-- Computes the `depth` of an expression, useful during generation -/
-def depthExpr (e : Expr) : Nat :=
+def depthExpr (e : CedarExpr) : Nat :=
   match e with
-  | Expr.lit _p => 1
-  | Expr.var _v => 1
-  | Expr.ite cond thenExpr elseExpr =>
+  | CedarExpr.lit _ => 1
+  | CedarExpr.var _ => 1
+  | CedarExpr.ite cond thenExpr elseExpr =>
     1 + max (max (depthExpr cond) (depthExpr thenExpr)) (depthExpr elseExpr)
-  | Expr.andExpr a b => 1 + max (depthExpr a) (depthExpr b)
-  | Expr.orExpr a b => 1 + max (depthExpr a) (depthExpr b)
-  | Expr.unaryApp _op expr => 1 + depthExpr expr
-  | Expr.binaryApp _op a b => 1 + max (depthExpr a) (depthExpr b)
-  | Expr.getAttr expr _attr => 1 + depthExpr expr
-  | Expr.hasAttr expr _attr => 1 + depthExpr expr
-  | Expr.setExprNil => 1
-  | Expr.setExprCons e ls => 1 + max (depthExpr e) (depthExpr ls)
-  | Expr.recExprNil => 1
-  | Expr.recExprCons _s e attrs => 1 + max (depthExpr e) (depthExpr attrs)
+  | CedarExpr.andExpr a b => 1 + max (depthExpr a) (depthExpr b)
+  | CedarExpr.orExpr a b => 1 + max (depthExpr a) (depthExpr b)
+  | CedarExpr.unaryApp _op expr => 1 + depthExpr expr
+  | CedarExpr.binaryApp _op a b => 1 + max (depthExpr a) (depthExpr b)
+  | CedarExpr.getAttr expr _attr => 1 + depthExpr expr
+  | CedarExpr.hasAttr expr _attr => 1 + depthExpr expr
+  | CedarExpr.setExprNil => 1
+  | CedarExpr.setExprCons e ls => 1 + max (depthExpr e) (depthExpr ls)
+  | CedarExpr.recExprNil => 1
+  | CedarExpr.recExprCons _s e attrs => 1 + max (depthExpr e) (depthExpr attrs)
 
 /-- Computes the `size` of an expression, useful during generation -/
-def sizeExpr (e : Expr) : Nat :=
+def sizeExpr (e : CedarExpr) : Nat :=
   match e with
-  | Expr.lit _ => 1
-  | Expr.var _ => 1
-  | Expr.ite cond thenExpr elseExpr =>
+  | CedarExpr.lit _ => 1
+  | CedarExpr.var _ => 1
+  | CedarExpr.ite cond thenExpr elseExpr =>
     1 + sizeExpr cond + sizeExpr thenExpr + sizeExpr elseExpr
-  | Expr.andExpr a b => 1 + sizeExpr a + sizeExpr b
-  | Expr.orExpr a b => 1 + sizeExpr a + sizeExpr b
-  | Expr.unaryApp _ expr => 1 + sizeExpr expr
-  | Expr.binaryApp _ a b => 1 + sizeExpr a + sizeExpr b
-  | Expr.getAttr expr _ => 1 + sizeExpr expr
-  | Expr.hasAttr expr _ => 1 + sizeExpr expr
-  | Expr.setExprNil => 1
-  | Expr.setExprCons e ls => 1 + sizeExpr e + sizeExpr ls
-  | Expr.recExprNil => 1
-  | Expr.recExprCons _ e attrs => 1 + sizeExpr e + sizeExpr attrs
+  | CedarExpr.andExpr a b => 1 + sizeExpr a + sizeExpr b
+  | CedarExpr.orExpr a b => 1 + sizeExpr a + sizeExpr b
+  | CedarExpr.unaryApp _ expr => 1 + sizeExpr expr
+  | CedarExpr.binaryApp _ a b => 1 + sizeExpr a + sizeExpr b
+  | CedarExpr.getAttr expr _ => 1 + sizeExpr expr
+  | CedarExpr.hasAttr expr _ => 1 + sizeExpr expr
+  | CedarExpr.setExprNil => 1
+  | CedarExpr.setExprCons e ls => 1 + sizeExpr e + sizeExpr ls
+  | CedarExpr.recExprNil => 1
+  | CedarExpr.recExprCons _ e attrs => 1 + sizeExpr e + sizeExpr attrs
 
 
 ---------------------------------------
@@ -232,29 +233,29 @@ def sizeExpr (e : Expr) : Nat :=
 -- Some basic predicates useful for typing
 
 /-- predicate: When an expression is a record -/
-inductive RecordExpr : Expr → Prop where
-| RENil : RecordExpr Expr.recExprNil
-| RECons : ∀ fn e r, RecordExpr (Expr.recExprCons fn e r)
+inductive RecordExpr : CedarExpr → Prop where
+| RENil : RecordExpr CedarExpr.recExprNil
+| RECons : ∀ fn e r, RecordExpr (CedarExpr.recExprCons fn e r)
 
 /-- predicate: When an expression is a set -/
-inductive SetExpr : Expr → Prop where
-| SENil : SetExpr Expr.setExprNil
-| SECons : ∀ e r, SetExpr (Expr.setExprCons e r)
+inductive SetExpr : CedarExpr → Prop where
+| SENil : SetExpr CedarExpr.setExprNil
+| SECons : ∀ e r, SetExpr (CedarExpr.setExprCons e r)
 
 /-- predicate: When an expression is a value -/
-inductive Value : Expr → Prop where
-| VLit : ∀ p, Value (Expr.lit p)
-| VSNil : Value Expr.setExprNil
-| VSCons : ∀ e ls, Value e → Value ls → Value (Expr.setExprCons e ls)
-| VRNil : Value Expr.recExprNil
-| VRCons : ∀ s e rs, Value e → Value rs → Value (Expr.recExprCons s e rs)
+inductive Value : CedarExpr → Prop where
+| VLit : ∀ p, Value (CedarExpr.lit p)
+| VSNil : Value CedarExpr.setExprNil
+| VSCons : ∀ e ls, Value e → Value ls → Value (CedarExpr.setExprCons e ls)
+| VRNil : Value CedarExpr.recExprNil
+| VRCons : ∀ s e rs, Value e → Value rs → Value (CedarExpr.recExprCons s e rs)
 
 /-- predicate: When an expression is a set of entity values -/
-inductive SetEntityValues : Expr → Prop where
-| SEVNil : SetEntityValues Expr.setExprNil
+inductive SetEntityValues : CedarExpr → Prop where
+| SEVNil : SetEntityValues CedarExpr.setExprNil
 | SEVCons : ∀ uid r,
     SetEntityValues r →
-    SetEntityValues (Expr.setExprCons (Expr.lit (Prim.entityUID uid)) r)
+    SetEntityValues (CedarExpr.setExprCons (CedarExpr.lit (Prim.entityUID uid)) r)
 
 ------------------------------------------------------
 -- Types
@@ -553,7 +554,7 @@ inductive BindAttrType : List EntityName → (CedarType × String × Bool) → C
 /-- A PathSet is a Cedar typing "capability" -- it is a set of accessible record-access expressions, or infinity (meaning all are accessible) -/
 inductive PathSet : Type where
 | allpaths
-| somepaths (paths : List Expr)
+| somepaths (paths : List CedarExpr)
 deriving Repr, BEq
 
 ------------------------------------------------------
@@ -561,8 +562,8 @@ deriving Repr, BEq
 ------------------------------------------------------
 
 /-- Membership test of `x` in `ps` -/
-def validPathExpr (x : Expr) (ps : PathSet) : Bool :=
-  let rec aux (xs : List Expr) : Bool :=
+def validPathExpr (x : CedarExpr) (ps : PathSet) : Bool :=
+  let rec aux (xs : List CedarExpr) : Bool :=
     match xs with
     | [] => false
     | y::ys =>
@@ -573,7 +574,7 @@ def validPathExpr (x : Expr) (ps : PathSet) : Bool :=
 
 /-- Intersects two pathsets -/
 def interExprs (ps : PathSet) (ys : PathSet) : PathSet :=
-  let rec aux (xs : List Expr) : List Expr :=
+  let rec aux (xs : List CedarExpr) : List CedarExpr :=
     match xs with
     | [] => []
     | x::xs' =>
@@ -584,7 +585,7 @@ def interExprs (ps : PathSet) (ys : PathSet) : PathSet :=
   | PathSet.somepaths xs => PathSet.somepaths (aux xs)
 
 /-- returns `l` with `x` removed -/
-def subExprs (x : Expr) (l : List Expr) : List Expr :=
+def subExprs (x : CedarExpr) (l : List CedarExpr) : List CedarExpr :=
    match l with
    | [] => []
    | y::ys =>
@@ -593,7 +594,7 @@ def subExprs (x : Expr) (l : List Expr) : List Expr :=
 
 /-- union of `xs` and `ys` -/
 def mergeExprs (xs : PathSet) (ys : PathSet) : PathSet :=
-  let rec aux (xs : List Expr) (ys : List Expr) : List Expr :=
+  let rec aux (xs : List CedarExpr) (ys : List CedarExpr) : List CedarExpr :=
     match xs with
     | [] => ys
     | x::xs' => x::(aux xs' (subExprs x ys))
@@ -610,70 +611,70 @@ def mergeExprs (xs : PathSet) (ys : PathSet) : PathSet :=
 
 /-- `HasType a v (e,x) t` is equivalent to a,v |- e : ;xt in the paper. This is
   Written assuming we will derive a generator for (e,x) given a v and t (ideally e and x would be their own parameters) -/
-inductive HasType : PathSet → Environment → (Expr × PathSet) → CedarType → Prop where
+inductive HasType : PathSet → Environment → (CedarExpr × PathSet) → CedarType → Prop where
 | TLitFalse : ∀ a V P,
     HasTypePrim V P (CedarType.boolType BoolType.ff) →
-    HasType a V ((Expr.lit P), PathSet.allpaths) (CedarType.boolType BoolType.ff)
+    HasType a V ((CedarExpr.lit P), PathSet.allpaths) (CedarType.boolType BoolType.ff)
 | TLitOther : ∀ a V P T,
     ¬(T = (CedarType.boolType BoolType.ff)) →
     HasTypePrim V P T →
-    HasType a V ((Expr.lit P), PathSet.somepaths []) T
+    HasType a V ((CedarExpr.lit P), PathSet.somepaths []) T
 | TVar : ∀ a V X T,
     HasTypeVar V X T →
-    HasType a V ((Expr.var X), PathSet.somepaths []) T
+    HasType a V ((CedarExpr.var X), PathSet.somepaths []) T
 | TCondTrue : ∀ a V E1 E2 E3 x1 x2 T2,
     HasType a V (E1, x1) (CedarType.boolType BoolType.tt) →
     HasType (mergeExprs a x1) V (E2, x2) T2 →
-    HasType a V ((Expr.ite E1 E2 E3), (mergeExprs x1 x2)) T2
+    HasType a V ((CedarExpr.ite E1 E2 E3), (mergeExprs x1 x2)) T2
 | TCondFalse : ∀ a V E1 E2 E3 x1 x3 T3,
     HasType a V (E1, x1) (CedarType.boolType BoolType.ff) →
     HasType a V (E3, x3) T3 →
-    HasType a V ((Expr.ite E1 E2 E3), x3) T3
+    HasType a V ((CedarExpr.ite E1 E2 E3), x3) T3
 | TCondBool : ∀ a V E1 E2 E3 x1 x2 x3 T2 T3 T,
     SubType T2 T → SubType T3 T →
     HasType a V (E1, x1) (CedarType.boolType BoolType.anyBool) →
     HasType (mergeExprs a x1) V (E2, x2) T2 →
     HasType a V (E3, x3) T3 →
-    HasType a V ((Expr.ite E1 E2 E3), (interExprs (mergeExprs x1 x2) x3)) T
+    HasType a V ((CedarExpr.ite E1 E2 E3), (interExprs (mergeExprs x1 x2) x3)) T
 | TAnd : ∀ a x V E1 E2 T1,
-    HasType a V ((Expr.ite E1 E2 (Expr.lit (Prim.boolean false))), x) T1 →
-    HasType a V ((Expr.andExpr E1 E2), x) T1
+    HasType a V ((CedarExpr.ite E1 E2 (CedarExpr.lit (Prim.boolean false))), x) T1 →
+    HasType a V ((CedarExpr.andExpr E1 E2), x) T1
 | TOr : ∀ a x V E1 E2 T1,
-    HasType a V ((Expr.ite E1 (Expr.lit (Prim.boolean true)) E2), x) T1 →
-    HasType a V ((Expr.orExpr E1 E2), x) T1
+    HasType a V ((CedarExpr.ite E1 (CedarExpr.lit (Prim.boolean true)) E2), x) T1 →
+    HasType a V ((CedarExpr.orExpr E1 E2), x) T1
 | TNotAny : ∀ a x V e,
     HasType a V (e, x) (CedarType.boolType BoolType.anyBool) →
-    HasType a V ((Expr.unaryApp UnaryOp.not e), PathSet.somepaths []) (CedarType.boolType BoolType.anyBool)
+    HasType a V ((CedarExpr.unaryApp UnaryOp.not e), PathSet.somepaths []) (CedarType.boolType BoolType.anyBool)
 | TNotTrue : ∀ a x V e,
     HasType a V (e, x) (CedarType.boolType BoolType.tt) →
-    HasType a V ((Expr.unaryApp UnaryOp.not e), PathSet.allpaths) (CedarType.boolType BoolType.ff)
+    HasType a V ((CedarExpr.unaryApp UnaryOp.not e), PathSet.allpaths) (CedarType.boolType BoolType.ff)
 | TNotFalse : ∀ a x V e,
     HasType a V (e, x) (CedarType.boolType BoolType.ff) →
-    HasType a V ((Expr.unaryApp UnaryOp.not e), PathSet.somepaths []) (CedarType.boolType BoolType.tt)
+    HasType a V ((CedarExpr.unaryApp UnaryOp.not e), PathSet.somepaths []) (CedarType.boolType BoolType.tt)
 | TNeg : ∀ a V x e,
     HasType a V (e, x) CedarType.intType →
-    HasType a V ((Expr.unaryApp UnaryOp.neg e), PathSet.somepaths []) CedarType.intType
+    HasType a V ((CedarExpr.unaryApp UnaryOp.neg e), PathSet.somepaths []) CedarType.intType
 | TLike : ∀ a V e x P,
     HasType a V (e, x) CedarType.stringType →
-    HasType a V ((Expr.unaryApp (UnaryOp.like P) e), PathSet.somepaths []) (CedarType.boolType BoolType.anyBool)
+    HasType a V ((CedarExpr.unaryApp (UnaryOp.like P) e), PathSet.somepaths []) (CedarType.boolType BoolType.anyBool)
 | TIsTrue : ∀ a x V e n ets acts R ns,
     V = (Environment.MkEnvironment (Schema.MkSchema ets acts) R) →
     DefinedEntities ets ns →
     WfCedarType ns (CedarType.entityType n) →
     HasType a V (e, x) (CedarType.entityType n) →
-    HasType a V ((Expr.unaryApp (UnaryOp.is n) e), PathSet.somepaths []) (CedarType.boolType BoolType.tt)
+    HasType a V ((CedarExpr.unaryApp (UnaryOp.is n) e), PathSet.somepaths []) (CedarType.boolType BoolType.tt)
 | TIsFalse : ∀ a x V e N1 N2 ets acts R ns,
     V = (Environment.MkEnvironment (Schema.MkSchema ets acts) R) →
     DefinedEntities ets ns →
     WfCedarType ns (CedarType.entityType N1) →
     HasType a V (e, x) (CedarType.entityType N2) →
     ¬(N1 = N2) →
-    HasType a V ((Expr.unaryApp (UnaryOp.is N1) e), PathSet.allpaths) (CedarType.boolType BoolType.ff)
+    HasType a V ((CedarExpr.unaryApp (UnaryOp.is N1) e), PathSet.allpaths) (CedarType.boolType BoolType.ff)
 | TEqLitTrue : ∀ a V P,
-    HasType a V ((Expr.binaryApp BinaryOp.equals (Expr.lit P) (Expr.lit P)), PathSet.somepaths []) (CedarType.boolType BoolType.tt)
+    HasType a V ((CedarExpr.binaryApp BinaryOp.equals (CedarExpr.lit P) (CedarExpr.lit P)), PathSet.somepaths []) (CedarType.boolType BoolType.tt)
 | TEqLitFalse : ∀ a V P1 P2,
     ¬(P1 = P2) →
-    HasType a V ((Expr.binaryApp BinaryOp.equals (Expr.lit P1) (Expr.lit P2)), PathSet.allpaths) (CedarType.boolType BoolType.ff)
+    HasType a V ((CedarExpr.binaryApp BinaryOp.equals (CedarExpr.lit P1) (CedarExpr.lit P2)), PathSet.allpaths) (CedarType.boolType BoolType.ff)
 | TEqEntity : ∀ a x1 x2 V E1 N1 E2 N2 ns ets acts R,
     V = (Environment.MkEnvironment (Schema.MkSchema ets acts) R) →
     DefinedEntities ets ns →
@@ -682,7 +683,7 @@ inductive HasType : PathSet → Environment → (Expr × PathSet) → CedarType 
     ¬(N1 = N2) →
     HasType a V (E1, x1) (CedarType.entityType N1) →
     HasType a V (E2, x2) (CedarType.entityType N2) →
-    HasType a V ((Expr.binaryApp BinaryOp.equals E1 E2), PathSet.allpaths) (CedarType.boolType BoolType.ff)
+    HasType a V ((CedarExpr.binaryApp BinaryOp.equals E1 E2), PathSet.allpaths) (CedarType.boolType BoolType.ff)
 | TEqAny : ∀ a x1 x2 V E1 E2 T T1 T2 ets acts R ns,
     V = (Environment.MkEnvironment (Schema.MkSchema ets acts) R) →
     DefinedEntities ets ns →
@@ -690,7 +691,7 @@ inductive HasType : PathSet → Environment → (Expr × PathSet) → CedarType 
     SubType T1 T → SubType T2 T →
     HasType a V (E1, x1) T1 →
     HasType a V (E2, x2) T2 →
-    HasType a V ((Expr.binaryApp BinaryOp.equals E1 E2), PathSet.somepaths []) (CedarType.boolType BoolType.anyBool)
+    HasType a V ((CedarExpr.binaryApp BinaryOp.equals E1 E2), PathSet.somepaths []) (CedarType.boolType BoolType.anyBool)
 /-- LATER: Following two rules could look in request env for more precision -/
 | TInEntity : ∀ a x1 x2 V E1 E2 N1 N2 ns ets acts R,
     V = (Environment.MkEnvironment (Schema.MkSchema ets acts) R) →
@@ -699,7 +700,7 @@ inductive HasType : PathSet → Environment → (Expr × PathSet) → CedarType 
     WfCedarType ns (CedarType.entityType N2) →
     HasType a V (E1, x1) (CedarType.entityType N1) →
     HasType a V (E2, x2) (CedarType.entityType N2) →
-    HasType a V ((Expr.binaryApp BinaryOp.mem E1 E2), PathSet.somepaths []) (CedarType.boolType BoolType.anyBool)
+    HasType a V ((CedarExpr.binaryApp BinaryOp.mem E1 E2), PathSet.somepaths []) (CedarType.boolType BoolType.anyBool)
 | TInEntitySet : ∀ a x1 x2 V E1 E2 N1 N2 ns ets acts R,
     V = (Environment.MkEnvironment (Schema.MkSchema ets acts) R) →
     DefinedEntities ets ns →
@@ -707,27 +708,27 @@ inductive HasType : PathSet → Environment → (Expr × PathSet) → CedarType 
     WfCedarType ns (CedarType.entityType N2) →
     HasType a V (E1, x1) (CedarType.entityType N1) →
     HasType a V (E2, x2) (CedarType.setType (CedarType.entityType N2)) →
-    HasType a V ((Expr.binaryApp BinaryOp.mem E1 E2), PathSet.somepaths []) (CedarType.boolType BoolType.anyBool)
+    HasType a V ((CedarExpr.binaryApp BinaryOp.mem E1 E2), PathSet.somepaths []) (CedarType.boolType BoolType.anyBool)
 | TLessThan : ∀ a x1 x2 V E1 E2,
     HasType a V (E1, x1) CedarType.intType →
     HasType a V (E2, x2) CedarType.intType →
-    HasType a V ((Expr.binaryApp BinaryOp.less E1 E2), PathSet.somepaths []) (CedarType.boolType BoolType.anyBool)
+    HasType a V ((CedarExpr.binaryApp BinaryOp.less E1 E2), PathSet.somepaths []) (CedarType.boolType BoolType.anyBool)
 | TLessEqualThan : ∀ a x1 x2 V E1 E2,
     HasType a V (E1, x1) CedarType.intType →
     HasType a V (E2, x2) CedarType.intType →
-    HasType a V ((Expr.binaryApp BinaryOp.lessEq E1 E2), PathSet.somepaths []) (CedarType.boolType BoolType.anyBool)
+    HasType a V ((CedarExpr.binaryApp BinaryOp.lessEq E1 E2), PathSet.somepaths []) (CedarType.boolType BoolType.anyBool)
 | TAdd : ∀ a x1 x2 V E1 E2,
     HasType a V (E1, x1) CedarType.intType →
     HasType a V (E2, x2) CedarType.intType →
-    HasType a V ((Expr.binaryApp BinaryOp.add E1 E2), PathSet.somepaths []) CedarType.intType
+    HasType a V ((CedarExpr.binaryApp BinaryOp.add E1 E2), PathSet.somepaths []) CedarType.intType
 | TSub : ∀ a x1 x2 V E1 E2,
     HasType a V (E1, x1) CedarType.intType →
     HasType a V (E2, x2) CedarType.intType →
-    HasType a V ((Expr.binaryApp BinaryOp.sub E1 E2), PathSet.somepaths []) CedarType.intType
+    HasType a V ((CedarExpr.binaryApp BinaryOp.sub E1 E2), PathSet.somepaths []) CedarType.intType
 | TMul : ∀ a x1 x2 V E1 E2,
     HasType a V (E1, x1) CedarType.intType →
     HasType a V (E2, x2) CedarType.intType →
-    HasType a V ((Expr.binaryApp BinaryOp.mul E1 E2), PathSet.somepaths []) CedarType.intType
+    HasType a V ((CedarExpr.binaryApp BinaryOp.mul E1 E2), PathSet.somepaths []) CedarType.intType
 | TContains : ∀ a x1 x2 V E1 E2 ets acts R ns T1 T2 T,
     V = (Environment.MkEnvironment (Schema.MkSchema ets acts) R) →
     DefinedEntities ets ns →
@@ -735,7 +736,7 @@ inductive HasType : PathSet → Environment → (Expr × PathSet) → CedarType 
     SubType T1 T → SubType T2 T →
     HasType a V (E1, x1) T1 →
     HasType a V (E2, x2) (CedarType.setType T2) →
-    HasType a V ((Expr.binaryApp BinaryOp.contains E1 E2), PathSet.somepaths []) (CedarType.boolType BoolType.anyBool)
+    HasType a V ((CedarExpr.binaryApp BinaryOp.contains E1 E2), PathSet.somepaths []) (CedarType.boolType BoolType.anyBool)
 | TContainsAll : ∀ a x1 x2 V E1 E2 ets acts R ns T1 T2 T,
     V = (Environment.MkEnvironment (Schema.MkSchema ets acts) R) →
     DefinedEntities ets ns →
@@ -743,7 +744,7 @@ inductive HasType : PathSet → Environment → (Expr × PathSet) → CedarType 
     SubType T1 T → SubType T2 T →
     HasType a V (E1, x1) (CedarType.setType T1) →
     HasType a V (E2, x2) (CedarType.setType T2) →
-    HasType a V ((Expr.binaryApp BinaryOp.containsAll E1 E2), PathSet.somepaths []) (CedarType.boolType BoolType.anyBool)
+    HasType a V ((CedarExpr.binaryApp BinaryOp.containsAll E1 E2), PathSet.somepaths []) (CedarType.boolType BoolType.anyBool)
 | TContainsAny : ∀ a x1 x2 V E1 E2 ets acts R ns T1 T2 T,
     V = (Environment.MkEnvironment (Schema.MkSchema ets acts) R) →
     DefinedEntities ets ns →
@@ -751,66 +752,66 @@ inductive HasType : PathSet → Environment → (Expr × PathSet) → CedarType 
     SubType T1 T → SubType T2 T →
     HasType a V (E1, x1) (CedarType.setType T1) →
     HasType a V (E2, x2) (CedarType.setType T2) →
-    HasType a V ((Expr.binaryApp BinaryOp.containsAny E1 E2), PathSet.somepaths []) (CedarType.boolType BoolType.anyBool)
-| TRecNil : ∀ a V, HasType a V (Expr.recExprNil, PathSet.somepaths []) CedarType.recordTypeNil
+    HasType a V ((CedarExpr.binaryApp BinaryOp.containsAny E1 E2), PathSet.somepaths []) (CedarType.boolType BoolType.anyBool)
+| TRecNil : ∀ a V, HasType a V (CedarExpr.recExprNil, PathSet.somepaths []) CedarType.recordTypeNil
 | TRecCons : ∀ a x rx V e i T R b TR,
     HasType a V (e, x) T →
     RecordType TR →
     HasType a V (R, rx) TR →
-    HasType a V ((Expr.recExprCons i e R), PathSet.somepaths []) (CedarType.recordTypeCons i b T TR)
+    HasType a V ((CedarExpr.recExprCons i e R), PathSet.somepaths []) (CedarType.recordTypeCons i b T TR)
 | TSetSingle : ∀ a x V e T,
     HasType a V (e, x) T →
-    HasType a V ((Expr.setExprCons e Expr.setExprNil), PathSet.somepaths []) (CedarType.setType T)
+    HasType a V ((CedarExpr.setExprCons e CedarExpr.setExprNil), PathSet.somepaths []) (CedarType.setType T)
 | TSetMany : ∀ a x rx V e T R,
     HasType a V (e, x) T →
     HasType a V (R, rx) (CedarType.setType T) →
-    HasType a V ((Expr.setExprCons e R), PathSet.somepaths []) (CedarType.setType T)
+    HasType a V ((CedarExpr.setExprCons e R), PathSet.somepaths []) (CedarType.setType T)
 | THasAttrRecOpt : ∀ a x V e F T TE ns ets acts R,
     V = (Environment.MkEnvironment (Schema.MkSchema ets acts) R) →
     DefinedEntities ets ns →
     BindAttrType ns (TE, F, true) T →
     HasType a V (e, x) TE →
-    HasType a V ((Expr.hasAttr e F), (PathSet.somepaths [Expr.getAttr e F])) (CedarType.boolType BoolType.anyBool)
+    HasType a V ((CedarExpr.hasAttr e F), (PathSet.somepaths [CedarExpr.getAttr e F])) (CedarType.boolType BoolType.anyBool)
 | THasAttrRecReq : ∀ a x V e F T TE ns ets acts R,
     V = (Environment.MkEnvironment (Schema.MkSchema ets acts) R) →
     DefinedEntities ets ns →
     BindAttrType ns (TE, F, false) T →
     HasType a V (e, x) TE →
-    HasType a V ((Expr.hasAttr e F), (PathSet.somepaths [Expr.getAttr e F])) (CedarType.boolType BoolType.tt)
+    HasType a V ((CedarExpr.hasAttr e F), (PathSet.somepaths [CedarExpr.getAttr e F])) (CedarType.boolType BoolType.tt)
 | TGetAttrRecOpt : ∀ a x V e F T TE ns ets acts R,
     V = (Environment.MkEnvironment (Schema.MkSchema ets acts) R) →
     DefinedEntities ets ns →
     BindAttrType ns (TE, F, true) T →
     HasType a V (e, x) TE →
-    validPathExpr (Expr.getAttr e F) a = true →
-    HasType a V ((Expr.getAttr e F), PathSet.somepaths []) T
+    validPathExpr (CedarExpr.getAttr e F) a = true →
+    HasType a V ((CedarExpr.getAttr e F), PathSet.somepaths []) T
 | TGetAttrRecReq : ∀ a x V e F T TE ns ets acts R,
     V = (Environment.MkEnvironment (Schema.MkSchema ets acts) R) →
     DefinedEntities ets ns →
     BindAttrType ns (TE, F, false) T →
     HasType a V (e, x) TE →
-    HasType a V ((Expr.getAttr e F), PathSet.somepaths []) T
+    HasType a V ((CedarExpr.getAttr e F), PathSet.somepaths []) T
 | THasAttrEntityOpt : ∀ a x V ets acts R e n fn T,
     V = (Environment.MkEnvironment (Schema.MkSchema ets acts) R) →
     GetEntityAttr ets (n, fn, true) T →
     HasType a V (e, x) (CedarType.entityType n) →
-    HasType a V ((Expr.hasAttr e fn), PathSet.somepaths [Expr.getAttr e fn]) (CedarType.boolType BoolType.anyBool)
+    HasType a V ((CedarExpr.hasAttr e fn), PathSet.somepaths [CedarExpr.getAttr e fn]) (CedarType.boolType BoolType.anyBool)
 | THasAttrEntityReq : ∀ a x V ets acts R e n fn T,
     V = (Environment.MkEnvironment (Schema.MkSchema ets acts) R) →
     GetEntityAttr ets (n, fn, false) T →
     HasType a V (e, x) (CedarType.entityType n) →
-    HasType a V ((Expr.hasAttr e fn), PathSet.somepaths [Expr.getAttr e fn]) (CedarType.boolType BoolType.tt)
+    HasType a V ((CedarExpr.hasAttr e fn), PathSet.somepaths [CedarExpr.getAttr e fn]) (CedarType.boolType BoolType.tt)
 | TGetAttrEntityOpt : ∀ a x V ets acts R e n fn T,
     V = (Environment.MkEnvironment (Schema.MkSchema ets acts) R) →
     GetEntityAttr ets (n, fn, true) T →
     HasType a V (e, x) (CedarType.entityType n) →
-    validPathExpr (Expr.getAttr e fn) a = true →
-    HasType a V ((Expr.getAttr e fn), PathSet.somepaths []) T
+    validPathExpr (CedarExpr.getAttr e fn) a = true →
+    HasType a V ((CedarExpr.getAttr e fn), PathSet.somepaths []) T
 | TGetAttrEntityReq : ∀ a x V ets acts R e n fn T,
     V = (Environment.MkEnvironment (Schema.MkSchema ets acts) R) →
     GetEntityAttr ets (n, fn, false) T →
     HasType a V (e, x) (CedarType.entityType n) →
-    HasType a V ((Expr.getAttr e fn), PathSet.somepaths []) T
+    HasType a V ((CedarExpr.getAttr e fn), PathSet.somepaths []) T
 
 ------------------------------
 -- Pretty printing for types
