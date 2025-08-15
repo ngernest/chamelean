@@ -8,12 +8,12 @@ import Batteries.Tactic.Lint
 /-- The name of an entity -/
 inductive EntityName where
 | MkName : String → List String → EntityName
-deriving Repr, BEq
+deriving Repr, BEq, DecidableEq
 
 /-- Entity UIDs -/
 inductive EntityUID where
 | MkEntityUID : EntityName → String → EntityUID
-deriving Repr, BEq
+deriving Repr, BEq, DecidableEq
 
 /-- Primitive values -/
 inductive Prim where
@@ -21,7 +21,7 @@ inductive Prim where
 | int (i : Int)
 | stringLit (s : String)
 | entityUID (e : EntityUID)
-deriving Repr, BEq
+deriving Repr, BEq, DecidableEq
 
 /-- Variables -/
 inductive Var where
@@ -29,13 +29,13 @@ inductive Var where
 | action
 | resource
 | context
-deriving Repr, BEq
+deriving Repr, BEq, DecidableEq
 
 /-- Pattern elements -/
 inductive PatElem where
 | star
 | justLit (s : String)
-deriving Repr, BEq
+deriving Repr, BEq, DecidableEq
 
 /-- Unary operations -/
 inductive UnaryOp where
@@ -43,7 +43,7 @@ inductive UnaryOp where
 | neg
 | like (p : List PatElem)
 | is (ety : EntityName)
-deriving Repr, BEq
+deriving Repr, BEq, DecidableEq
 
 /-- Binary operations -/
 inductive BinaryOp where
@@ -57,7 +57,7 @@ inductive BinaryOp where
 | contains
 | containsAll
 | containsAny
-deriving Repr, BEq
+deriving Repr, BEq, DecidableEq
 
 /-- Cedar expressions. Note:
     - We call this datatype `CedarExpr` to avoid naming conflicts with Lean's `Expr` datatype
@@ -76,18 +76,18 @@ inductive CedarExpr where
 | setExprCons (e : CedarExpr) (ls : CedarExpr)
 | recExprNil
 | recExprCons (s : String) (e : CedarExpr) (attrs : CedarExpr)
-deriving BEq
+deriving BEq, DecidableEq
 
 /-- Type of entity data.
     Precondition: the `Expr` argument should always be a record of values -/
 inductive EntityData where
 | MkEntityData : CedarExpr → List EntityUID → EntityData
-deriving BEq
+deriving BEq, DecidableEq
 
 /-- given `MkReq P A R C`, assumes that `RecordExpr C` and `Value C` hold --/
 inductive Request where
 | MkReq : EntityUID → EntityUID → EntityUID → CedarExpr → Request
-deriving BEq
+deriving BEq, DecidableEq
 
 -------------------------------------------------
 -- Part Two: Pretty Printing Cedar Expressions
@@ -266,7 +266,7 @@ inductive BoolType where
 | anyBool
 | tt
 | ff
-deriving Repr, BEq
+deriving Repr, BEq, DecidableEq
 
 /-- Types in Cedar -/
 inductive CedarType where
@@ -277,7 +277,7 @@ inductive CedarType where
 | setType (ty : CedarType)
 | recordTypeNil
 | recordTypeCons (s : String) (opt : Bool) (ty : CedarType) (rest : CedarType)
-deriving BEq
+deriving BEq, DecidableEq
 
 /-- Determines whether a `CedarType` is a `RecordType` -/
 inductive RecordType : CedarType → Prop where
@@ -290,7 +290,7 @@ inductive DefinedName : List EntityName → EntityName → Prop where
     A = B →
     DefinedName (A::L) B
 | DNRest : ∀ L A B,
-    ¬(A = B) →
+    A != B →
     DefinedName L A →
     DefinedName (B::L) A
 
@@ -333,7 +333,7 @@ def WfRecordType (ns : List EntityName) (ct : CedarType) : Prop :=
 @[nolint docBlame]
 inductive EntitySchemaEntry where
 | MkEntitySchemaEntry (ancestors : List EntityName) (attrs : List (String × Bool × CedarType))
-deriving BEq
+deriving BEq, DecidableEq
 
 @[nolint docBlame]
 inductive WfAttrs : List EntityName → List (String × Bool × CedarType) → Prop where
@@ -365,7 +365,7 @@ inductive WfETS : List EntityName → List EntityName → List (EntityName × En
 @[nolint docBlame]
 inductive ActionSchemaEntry where
 | MkActionSchemaEntry (prin : List EntityName) (res : List EntityName) (contextType : List (String × Bool × CedarType))
-deriving BEq
+deriving BEq, DecidableEq
 
 /-- LATER: Allow more than one principal and resource -/
 inductive WfACT : List EntityName → (EntityUID × ActionSchemaEntry) → Prop where
@@ -389,7 +389,7 @@ inductive WfACTS : List EntityName → List (EntityUID × ActionSchemaEntry) →
 @[nolint docBlame]
 inductive Schema where
 | MkSchema (ets : List (EntityName × EntitySchemaEntry)) (acts : List (EntityUID × ActionSchemaEntry))
-deriving BEq
+deriving BEq, DecidableEq
 
 @[nolint docBlame]
 inductive WfSchema : List EntityName → Schema → Prop where
@@ -438,9 +438,9 @@ inductive GetEntityAttr : List (EntityName × EntitySchemaEntry) → (EntityName
 ------------------------------------------------------
 
 @[nolint docBlame]
-inductive RequestType : Type where
+inductive RequestType where
 | MkRequest (prin : EntityName) (act : EntityUID) (res : EntityName) (ctxt : List (String × Bool × CedarType))
-deriving BEq
+deriving BEq, DecidableEq
 
 /-- Converts a context description in RequestType to a Cedar record type -/
 inductive ReqContextToCedarType : List (String × Bool × CedarType) → CedarType → Prop where
@@ -478,9 +478,9 @@ inductive ActionSchemaToRequestTypes : List (EntityUID × ActionSchemaEntry) →
     ActionSchemaToRequestTypes ((uid, a)::ass) acc reqs
 
 @[nolint docBlame]
-inductive Environment : Type where
+inductive Environment where
 | MkEnvironment (schema : Schema) (reqType : RequestType)
-deriving BEq
+deriving BEq, DecidableEq
 
 @[nolint docBlame]
 inductive SchemaToEnvironments : Schema → List RequestType → List Environment → Prop where
@@ -552,7 +552,7 @@ inductive BindAttrType : List EntityName → (CedarType × String × Bool) → C
     BindAttrType ns ((CedarType.recordTypeCons y i t r), x, b) t1
 
 /-- A PathSet is a Cedar typing "capability" -- it is a set of accessible record-access expressions, or infinity (meaning all are accessible) -/
-inductive PathSet : Type where
+inductive PathSet where
 | allpaths
 | somepaths (paths : List CedarExpr)
 deriving Repr, BEq
