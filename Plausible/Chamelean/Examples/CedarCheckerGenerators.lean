@@ -435,9 +435,9 @@ info: Try this generator: instance : ArbitrarySizedSuchThat CedarType (fun ct_1 
 #guard_msgs(info, drop warning) in
 #derive_generator (fun (ct : CedarType) => WfCedarType ns ct)
 
---------------------------------------------------
+----------------------------------------------------
 -- Checker & Generator for well-formed record types
---------------------------------------------------
+----------------------------------------------------
 
 /--
 info: Try this checker: instance : DecOpt (WfRecordType ns_1 rt_1) where
@@ -539,3 +539,59 @@ info: Try this generator: instance : ArbitrarySizedSuchThat CedarType (fun rt_1 
 -/
 #guard_msgs(info, drop warning) in
 #derive_generator (fun (rt : CedarType) => WfRecordType ns rt)
+
+----------------------------------------------------
+-- Checker & Generator for well-formed attributes
+----------------------------------------------------
+
+/--
+info: Try this checker: instance : DecOpt (WfAttrs ns_1 attrs_1) where
+  decOpt :=
+    let rec aux_dec (initSize : Nat) (size : Nat) (ns_1 : List EntityName)
+      (attrs_1 : List (String × Bool × CedarType)) : Option Bool :=
+      match size with
+      | Nat.zero =>
+        DecOpt.checkerBacktrack
+          [fun _ =>
+            match attrs_1 with
+            | List.nil => Option.some Bool.true
+            | _ => Option.some Bool.false]
+      | Nat.succ size' =>
+        DecOpt.checkerBacktrack
+          [fun _ =>
+            match attrs_1 with
+            | List.nil => Option.some Bool.true
+            | _ => Option.some Bool.false,
+            fun _ =>
+            match attrs_1 with
+            | List.cons (Prod.mk s (Prod.mk b T)) attrs =>
+              DecOpt.andOptList [DecOpt.decOpt (WfCedarType ns_1 T) initSize, aux_dec initSize size' ns_1 attrs]
+            | _ => Option.some Bool.false]
+    fun size => aux_dec size size ns_1 attrs_1
+-/
+#guard_msgs(info, drop warning) in
+#derive_checker (WfAttrs ns attrs)
+
+/--
+info: Try this generator: instance : ArbitrarySizedSuchThat (List (String × Bool × CedarType)) (fun attrs_1 => WfAttrs ns_1 attrs_1) where
+  arbitrarySizedST :=
+    let rec aux_arb (initSize : Nat) (size : Nat) (ns_1 : List EntityName) :
+      OptionT Plausible.Gen (List (String × Bool × CedarType)) :=
+      match size with
+      | Nat.zero => OptionTGen.backtrack [(1, return List.nil)]
+      | Nat.succ size' =>
+        OptionTGen.backtrack
+          [(1, return List.nil),
+            (Nat.succ size', do
+              let T ← ArbitrarySizedSuchThat.arbitrarySizedST (fun T => WfCedarType ns_1 T) initSize;
+              do
+                let attrs ← aux_arb initSize size' ns_1;
+                do
+                  let b ← Plausible.Arbitrary.arbitrary;
+                  do
+                    let s ← Plausible.Arbitrary.arbitrary;
+                    return List.cons (Prod.mk s (Prod.mk b T)) attrs)]
+    fun size => aux_arb size size ns_1
+-/
+#guard_msgs(info, drop warning) in
+#derive_generator (fun (attrs : List (String × Bool × CedarType)) => WfAttrs ns attrs)

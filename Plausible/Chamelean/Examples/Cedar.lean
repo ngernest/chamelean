@@ -346,7 +346,7 @@ inductive EntitySchemaEntry where
 | MkEntitySchemaEntry (ancestors : List EntityName) (attrs : List (String × Bool × CedarType))
 deriving BEq, DecidableEq
 
-@[nolint docBlame]
+/-- Well-formed attributes -/
 inductive WfAttrs : List EntityName → List (String × Bool × CedarType) → Prop where
 | WfAttrsNil : ∀ ns, WfAttrs ns []
 | WfAttrsCons : ∀ ns T s b attrs,
