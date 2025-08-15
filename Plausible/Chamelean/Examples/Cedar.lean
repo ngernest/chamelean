@@ -557,7 +557,7 @@ inductive BindAttrType : List EntityName → (CedarType × String × Bool) → C
     WfRecordType ns r →
     BindAttrType ns ((CedarType.recordTypeCons x b t r), x, b) t
 | BindLater : ∀ x y b i t1 t r ns,
-    ¬(x = y) →
+    x != y →
     WfRecordType ns r →
     BindAttrType ns (r, x, b) t1 →
     BindAttrType ns ((CedarType.recordTypeCons y i t r), x, b) t1

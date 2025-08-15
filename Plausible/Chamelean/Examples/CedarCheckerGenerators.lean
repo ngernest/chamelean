@@ -1459,6 +1459,41 @@ info: Try this checker: instance : DecOpt (RecordType ct_1) where
 #guard_msgs(info, drop warning) in
 #derive_checker (RecordType ct)
 
+/--
+info: Try this generator: instance : ArbitrarySizedSuchThat CedarType (fun ct_1 => RecordType ct_1) where
+  arbitrarySizedST :=
+    let rec aux_arb (initSize : Nat) (size : Nat) : OptionT Plausible.Gen CedarType :=
+      match size with
+      | Nat.zero =>
+        OptionTGen.backtrack
+          [(1, return CedarType.recordTypeNil),
+            (1, do
+              let T1 ← Plausible.Arbitrary.arbitrary;
+              do
+                let T2 ← Plausible.Arbitrary.arbitrary;
+                do
+                  let fn ← Plausible.Arbitrary.arbitrary;
+                  do
+                    let o ← Plausible.Arbitrary.arbitrary;
+                    return CedarType.recordTypeCons fn o T1 T2)]
+      | Nat.succ size' =>
+        OptionTGen.backtrack
+          [(1, return CedarType.recordTypeNil),
+            (1, do
+              let T1 ← Plausible.Arbitrary.arbitrary;
+              do
+                let T2 ← Plausible.Arbitrary.arbitrary;
+                do
+                  let fn ← Plausible.Arbitrary.arbitrary;
+                  do
+                    let o ← Plausible.Arbitrary.arbitrary;
+                    return CedarType.recordTypeCons fn o T1 T2),
+            ]
+    fun size => aux_arb size size
+-/
+#guard_msgs(info, drop warning) in
+#derive_generator (fun (ct : CedarType) => RecordType ct)
+
 --------------------
 -- Subtyping & Typing
 --------------------
@@ -1583,22 +1618,337 @@ info: Try this generator: instance : ArbitrarySizedSuchThat CedarType (fun t1_1 
 #guard_msgs(info, drop warning) in
 #derive_generator (fun (t1 : CedarType) => SubType t1 t2)
 
-/-- -/
+/--
+info: Try this generator: instance : ArbitrarySizedSuchThat Prim (fun p_1 => HasTypePrim v_1 p_1 t_1) where
+  arbitrarySizedST :=
+    let rec aux_arb (initSize : Nat) (size : Nat) (v_1 : Environment) (t_1 : CedarType) : OptionT Plausible.Gen Prim :=
+      match size with
+      | Nat.zero =>
+        OptionTGen.backtrack
+          [(1,
+              match t_1 with
+              | CedarType.boolType (BoolType.tt) => return Prim.boolean (Bool.true)
+              | _ => OptionT.fail),
+            (1,
+              match t_1 with
+              | CedarType.boolType (BoolType.ff) => return Prim.boolean (Bool.false)
+              | _ => OptionT.fail),
+            (1,
+              match t_1 with
+              | CedarType.intType => do
+                let i ← Plausible.Arbitrary.arbitrary;
+                return Prim.int i
+              | _ => OptionT.fail),
+            (1,
+              match t_1 with
+              | CedarType.stringType => do
+                let s ← Plausible.Arbitrary.arbitrary;
+                return Prim.stringLit s
+              | _ => OptionT.fail),
+            (1,
+              match t_1 with
+              | CedarType.entityType n =>
+                match v_1 with
+                | Environment.MkEnvironment (Schema.MkSchema ETS ACTS) R =>
+                  match DecOpt.decOpt (DefinedEntity ETS n) initSize with
+                  | Option.some Bool.true => do
+                    let i ← Plausible.Arbitrary.arbitrary;
+                    return Prim.entityUID (EntityUID.MkEntityUID n i)
+                  | _ => OptionT.fail
+                | _ => OptionT.fail
+              | _ => OptionT.fail)]
+      | Nat.succ size' =>
+        OptionTGen.backtrack
+          [(1,
+              match t_1 with
+              | CedarType.boolType (BoolType.tt) => return Prim.boolean (Bool.true)
+              | _ => OptionT.fail),
+            (1,
+              match t_1 with
+              | CedarType.boolType (BoolType.ff) => return Prim.boolean (Bool.false)
+              | _ => OptionT.fail),
+            (1,
+              match t_1 with
+              | CedarType.intType => do
+                let i ← Plausible.Arbitrary.arbitrary;
+                return Prim.int i
+              | _ => OptionT.fail),
+            (1,
+              match t_1 with
+              | CedarType.stringType => do
+                let s ← Plausible.Arbitrary.arbitrary;
+                return Prim.stringLit s
+              | _ => OptionT.fail),
+            (1,
+              match t_1 with
+              | CedarType.entityType n =>
+                match v_1 with
+                | Environment.MkEnvironment (Schema.MkSchema ETS ACTS) R =>
+                  match DecOpt.decOpt (DefinedEntity ETS n) initSize with
+                  | Option.some Bool.true => do
+                    let i ← Plausible.Arbitrary.arbitrary;
+                    return Prim.entityUID (EntityUID.MkEntityUID n i)
+                  | _ => OptionT.fail
+                | _ => OptionT.fail
+              | _ => OptionT.fail),
+            ]
+    fun size => aux_arb size size v_1 t_1
+-/
 #guard_msgs(info, drop warning) in
 #derive_generator (fun (p : Prim) => HasTypePrim v p t)
 
-/-- -/
+/--
+info: Try this generator: instance : ArbitrarySizedSuchThat CedarType (fun t_1 => HasTypeVar v_1 x_1 t_1) where
+  arbitrarySizedST :=
+    let rec aux_arb (initSize : Nat) (size : Nat) (v_1 : Environment) (x_1 : Var) : OptionT Plausible.Gen CedarType :=
+      match size with
+      | Nat.zero =>
+        OptionTGen.backtrack
+          [(1,
+              match x_1 with
+              | Var.principal =>
+                match v_1 with
+                | Environment.MkEnvironment s (RequestType.MkRequest P A R C) => return CedarType.entityType P
+                | _ => OptionT.fail
+              | _ => OptionT.fail),
+            (1,
+              match x_1 with
+              | Var.action =>
+                match v_1 with
+                | Environment.MkEnvironment s (RequestType.MkRequest P (EntityUID.MkEntityUID n i) R C) =>
+                  return CedarType.entityType n
+                | _ => OptionT.fail
+              | _ => OptionT.fail),
+            (1,
+              match x_1 with
+              | Var.resource =>
+                match v_1 with
+                | Environment.MkEnvironment s (RequestType.MkRequest P A R C) => return CedarType.entityType R
+                | _ => OptionT.fail
+              | _ => OptionT.fail),
+            (1,
+              match x_1 with
+              | Var.context =>
+                match v_1 with
+                | Environment.MkEnvironment s (RequestType.MkRequest P A R C) => do
+                  let t_1 ← ArbitrarySizedSuchThat.arbitrarySizedST (fun t_1 => ReqContextToCedarType C t_1) initSize;
+                  return t_1
+                | _ => OptionT.fail
+              | _ => OptionT.fail)]
+      | Nat.succ size' =>
+        OptionTGen.backtrack
+          [(1,
+              match x_1 with
+              | Var.principal =>
+                match v_1 with
+                | Environment.MkEnvironment s (RequestType.MkRequest P A R C) => return CedarType.entityType P
+                | _ => OptionT.fail
+              | _ => OptionT.fail),
+            (1,
+              match x_1 with
+              | Var.action =>
+                match v_1 with
+                | Environment.MkEnvironment s (RequestType.MkRequest P (EntityUID.MkEntityUID n i) R C) =>
+                  return CedarType.entityType n
+                | _ => OptionT.fail
+              | _ => OptionT.fail),
+            (1,
+              match x_1 with
+              | Var.resource =>
+                match v_1 with
+                | Environment.MkEnvironment s (RequestType.MkRequest P A R C) => return CedarType.entityType R
+                | _ => OptionT.fail
+              | _ => OptionT.fail),
+            (1,
+              match x_1 with
+              | Var.context =>
+                match v_1 with
+                | Environment.MkEnvironment s (RequestType.MkRequest P A R C) => do
+                  let t_1 ← ArbitrarySizedSuchThat.arbitrarySizedST (fun t_1 => ReqContextToCedarType C t_1) initSize;
+                  return t_1
+                | _ => OptionT.fail
+              | _ => OptionT.fail),
+            ]
+    fun size => aux_arb size size v_1 x_1
+-/
 #guard_msgs(info, drop warning) in
 #derive_generator (fun (t : CedarType) => HasTypeVar v x t)
 
-/-- -/
+/--
+info: Try this generator: instance : ArbitrarySizedSuchThat Var (fun x_1 => HasTypeVar v_1 x_1 t_1) where
+  arbitrarySizedST :=
+    let rec aux_arb (initSize : Nat) (size : Nat) (v_1 : Environment) (t_1 : CedarType) : OptionT Plausible.Gen Var :=
+      match size with
+      | Nat.zero =>
+        OptionTGen.backtrack
+          [(1,
+              match t_1 with
+              | CedarType.entityType u_3 =>
+                match v_1 with
+                | Environment.MkEnvironment s (RequestType.MkRequest P A R C) =>
+                  match DecOpt.decOpt (BEq.beq u_3 P) initSize with
+                  | Option.some Bool.true => return Var.principal
+                  | _ => OptionT.fail
+                | _ => OptionT.fail
+              | _ => OptionT.fail),
+            (1,
+              match t_1 with
+              | CedarType.entityType u_3 =>
+                match v_1 with
+                | Environment.MkEnvironment s (RequestType.MkRequest P (EntityUID.MkEntityUID n i) R C) =>
+                  match DecOpt.decOpt (BEq.beq u_3 n) initSize with
+                  | Option.some Bool.true => return Var.action
+                  | _ => OptionT.fail
+                | _ => OptionT.fail
+              | _ => OptionT.fail),
+            (1,
+              match t_1 with
+              | CedarType.entityType u_3 =>
+                match v_1 with
+                | Environment.MkEnvironment s (RequestType.MkRequest P A R C) =>
+                  match DecOpt.decOpt (BEq.beq u_3 R) initSize with
+                  | Option.some Bool.true => return Var.resource
+                  | _ => OptionT.fail
+                | _ => OptionT.fail
+              | _ => OptionT.fail),
+            (1,
+              match v_1 with
+              | Environment.MkEnvironment s (RequestType.MkRequest P A R C) =>
+                match DecOpt.decOpt (ReqContextToCedarType C t_1) initSize with
+                | Option.some Bool.true => return Var.context
+                | _ => OptionT.fail
+              | _ => OptionT.fail)]
+      | Nat.succ size' =>
+        OptionTGen.backtrack
+          [(1,
+              match t_1 with
+              | CedarType.entityType u_3 =>
+                match v_1 with
+                | Environment.MkEnvironment s (RequestType.MkRequest P A R C) =>
+                  match DecOpt.decOpt (BEq.beq u_3 P) initSize with
+                  | Option.some Bool.true => return Var.principal
+                  | _ => OptionT.fail
+                | _ => OptionT.fail
+              | _ => OptionT.fail),
+            (1,
+              match t_1 with
+              | CedarType.entityType u_3 =>
+                match v_1 with
+                | Environment.MkEnvironment s (RequestType.MkRequest P (EntityUID.MkEntityUID n i) R C) =>
+                  match DecOpt.decOpt (BEq.beq u_3 n) initSize with
+                  | Option.some Bool.true => return Var.action
+                  | _ => OptionT.fail
+                | _ => OptionT.fail
+              | _ => OptionT.fail),
+            (1,
+              match t_1 with
+              | CedarType.entityType u_3 =>
+                match v_1 with
+                | Environment.MkEnvironment s (RequestType.MkRequest P A R C) =>
+                  match DecOpt.decOpt (BEq.beq u_3 R) initSize with
+                  | Option.some Bool.true => return Var.resource
+                  | _ => OptionT.fail
+                | _ => OptionT.fail
+              | _ => OptionT.fail),
+            (1,
+              match v_1 with
+              | Environment.MkEnvironment s (RequestType.MkRequest P A R C) =>
+                match DecOpt.decOpt (ReqContextToCedarType C t_1) initSize with
+                | Option.some Bool.true => return Var.context
+                | _ => OptionT.fail
+              | _ => OptionT.fail),
+            ]
+    fun size => aux_arb size size v_1 t_1
+-/
 #guard_msgs(info, drop warning) in
 #derive_generator (fun (x : Var) => HasTypeVar v x t)
 
-/-- -/
+/--
+info: Try this checker: instance : DecOpt (BindAttrType ns_1 tef_1 t_1) where
+  decOpt :=
+    let rec aux_dec (initSize : Nat) (size : Nat) (ns_1 : List EntityName) (tef_1 : CedarType × String × Bool)
+      (t_1 : CedarType) : Option Bool :=
+      match size with
+      | Nat.zero =>
+        DecOpt.checkerBacktrack
+          [fun _ =>
+            match tef_1 with
+            | Prod.mk (CedarType.recordTypeCons x b t r) (Prod.mk u_3 u_4) =>
+              DecOpt.andOptList
+                [DecOpt.decOpt (BEq.beq u_3 x) initSize,
+                  DecOpt.andOptList
+                    [DecOpt.decOpt (BEq.beq t t_1) initSize,
+                      DecOpt.andOptList
+                        [DecOpt.decOpt (BEq.beq u_4 b) initSize, DecOpt.decOpt (WfRecordType ns_1 r) initSize]]]
+            | _ => Option.some Bool.false]
+      | Nat.succ size' =>
+        DecOpt.checkerBacktrack
+          [fun _ =>
+            match tef_1 with
+            | Prod.mk (CedarType.recordTypeCons x b t r) (Prod.mk u_3 u_4) =>
+              DecOpt.andOptList
+                [DecOpt.decOpt (BEq.beq u_3 x) initSize,
+                  DecOpt.andOptList
+                    [DecOpt.decOpt (BEq.beq t t_1) initSize,
+                      DecOpt.andOptList
+                        [DecOpt.decOpt (BEq.beq u_4 b) initSize, DecOpt.decOpt (WfRecordType ns_1 r) initSize]]]
+            | _ => Option.some Bool.false,
+            fun _ =>
+            match tef_1 with
+            | Prod.mk (CedarType.recordTypeCons y i t r) (Prod.mk x b) =>
+              DecOpt.andOptList
+                [DecOpt.decOpt (Eq (bne x y) (Bool.true)) initSize,
+                  DecOpt.andOptList
+                    [DecOpt.decOpt (WfRecordType ns_1 r) initSize,
+                      aux_dec initSize size' ns_1 (Prod.mk r (Prod.mk x b)) t_1]]
+            | _ => Option.some Bool.false]
+    fun size => aux_dec size size ns_1 tef_1 t_1
+-/
 #guard_msgs(info, drop warning) in
 #derive_checker (BindAttrType ns tef t)
-/-- -/
+
+/--
+info: Try this generator: instance : ArbitrarySizedSuchThat (CedarType × String × Bool) (fun tef_1 => BindAttrType ns_1 tef_1 t_1) where
+  arbitrarySizedST :=
+    let rec aux_arb (initSize : Nat) (size : Nat) (ns_1 : List EntityName) (t_1 : CedarType) :
+      OptionT Plausible.Gen (CedarType × String × Bool) :=
+      match size with
+      | Nat.zero =>
+        OptionTGen.backtrack
+          [(1, do
+              let r ← ArbitrarySizedSuchThat.arbitrarySizedST (fun r => WfRecordType ns_1 r) initSize;
+              do
+                let b ← Plausible.Arbitrary.arbitrary;
+                do
+                  let x ← Plausible.Arbitrary.arbitrary;
+                  return Prod.mk (CedarType.recordTypeCons x b t_1 r) (Prod.mk x b))]
+      | Nat.succ size' =>
+        OptionTGen.backtrack
+          [(1, do
+              let r ← ArbitrarySizedSuchThat.arbitrarySizedST (fun r => WfRecordType ns_1 r) initSize;
+              do
+                let b ← Plausible.Arbitrary.arbitrary;
+                do
+                  let x ← Plausible.Arbitrary.arbitrary;
+                  return Prod.mk (CedarType.recordTypeCons x b t_1 r) (Prod.mk x b)),
+            (Nat.succ size', do
+              let vr_x_b ← aux_arb initSize size' ns_1 t_1;
+              match vr_x_b with
+                | Prod.mk r (Prod.mk x b) =>
+                  match DecOpt.decOpt (WfRecordType ns_1 r) initSize with
+                  | Option.some Bool.true => do
+                    let i ← Plausible.Arbitrary.arbitrary;
+                    do
+                      let t ← Plausible.Arbitrary.arbitrary;
+                      do
+                        let y ← Plausible.Arbitrary.arbitrary;
+                        match DecOpt.decOpt (Eq (bne x y) (Bool.true)) initSize with
+                          | Option.some Bool.true => return Prod.mk (CedarType.recordTypeCons y i t r) (Prod.mk x b)
+                          | _ => OptionT.fail
+                  | _ => OptionT.fail
+                | _ => OptionT.fail)]
+    fun size => aux_arb size size ns_1 t_1
+-/
 #guard_msgs(info, drop warning) in
 #derive_generator (fun (tef : (CedarType × String × Bool)) => BindAttrType ns tef t)
 
@@ -1606,6 +1956,7 @@ info: Try this generator: instance : ArbitrarySizedSuchThat CedarType (fun t1_1 
 ------------------------------------------------------------
 -- Generator for well-typed Cedar expressions
 ------------------------------------------------------------
+
 /-- -/
 #guard_msgs(info, drop warning) in
 #derive_generator (fun (ex : (CedarExpr × PathSet)) => HasType a v ex t)
