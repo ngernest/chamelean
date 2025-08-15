@@ -109,10 +109,6 @@ info: Try this generator: instance : ArbitrarySizedSuchThat (List Nat) (fun l_1 
 #guard_msgs(info, drop warning) in
 #derive_generator (fun (l : List Nat) => MinEx n l l')
 
--- Dummy `ArbitrarySizedSuchThat` instance needed so that the derived generator below compiles
-instance : ArbitrarySizedSuchThat (List Nat) (fun (l : List Nat) => l = [x] ++ l') where
-  arbitrarySizedST (_size : Nat) := return [x] ++ l'
-
 /--
 info: Try this generator: instance : ArbitrarySizedSuchThat (List Nat) (fun l_1 => MinEx3 x_1 l_1 l'_1) where
   arbitrarySizedST :=

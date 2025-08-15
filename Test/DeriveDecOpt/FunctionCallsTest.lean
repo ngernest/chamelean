@@ -1,4 +1,5 @@
 import Plausible.Chamelean.DecOpt
+import Plausible.Chamelean.Enumerators
 import Plausible.Chamelean.DeriveChecker
 import Plausible.Chamelean.EnumeratorCombinators
 import Test.CommonDefinitions.FunctionCallInConclusion
@@ -6,11 +7,6 @@ import Test.CommonDefinitions.FunctionCallInConclusion
 open DecOpt
 
 set_option guard_msgs.diff true
-
--- Dummy `EnumSizedSuchThat` instances needed so that the derived checker below compiles
--- TODO: figure out how to handle equality when deriving enumerators
-instance : EnumSizedSuchThat Nat (fun m => m = n * n) where
-  enumSizedST (_size : Nat) := return n * n
 
 /--
 info: Try this checker: instance : DecOpt (square_of n_1 m_1) where
