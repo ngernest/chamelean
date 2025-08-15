@@ -13,7 +13,8 @@ instance : Arbitrary String where
   arbitrary := GeneratorCombinators.elementsWithDefault
     "Aaron" ["Aaron", "John", "Mike", "Kesha", "Hicks", "A", "B", "C", "D"]
 
--- Derive `Arbitrary` instances for datatypes modelling Cedar data/types/expressions
+-- Derive `Arbitrary` instances for Cedar data/types/expressions/schemas
 deriving instance Arbitrary for
   EntityName, EntityUID, Prim, Var, PatElem, UnaryOp, BinaryOp, Expr,
-  Request, BoolType, CedarType
+  Request, BoolType, CedarType, EntitySchemaEntry, ActionSchemaEntry, Schema,
+  RequestType, Environment, PathSet
