@@ -1957,6 +1957,278 @@ info: Try this generator: instance : ArbitrarySizedSuchThat (CedarType × String
 -- Generator for well-typed Cedar expressions
 ------------------------------------------------------------
 
-/-- -/
+/--
+info: Try this generator: instance : ArbitrarySizedSuchThat (CedarExpr × PathSet) (fun ex_1 => HasType a_1 v_1 ex_1 t_1) where
+  arbitrarySizedST :=
+    let rec aux_arb (initSize : Nat) (size : Nat) (a_1 : PathSet) (v_1 : Environment) (t_1 : CedarType) :
+      OptionT Plausible.Gen (CedarExpr × PathSet) :=
+      match size with
+      | Nat.zero =>
+        OptionTGen.backtrack
+          [(1,
+              match t_1 with
+              | CedarType.boolType (BoolType.ff) => do
+                let P ←
+                  ArbitrarySizedSuchThat.arbitrarySizedST
+                      (fun P => HasTypePrim v_1 P (CedarType.boolType (BoolType.ff))) initSize;
+                return Prod.mk (CedarExpr.lit P) (PathSet.allpaths)
+              | _ => OptionT.fail),
+            (1,
+              match DecOpt.decOpt (Eq (bne t_1 (CedarType.boolType (BoolType.ff))) (Bool.true)) initSize with
+              | Option.some Bool.true => do
+                let P ← ArbitrarySizedSuchThat.arbitrarySizedST (fun P => HasTypePrim v_1 P t_1) initSize;
+                return Prod.mk (CedarExpr.lit P) (PathSet.somepaths (List.nil))
+              | _ => OptionT.fail),
+            (1, do
+              let X ← ArbitrarySizedSuchThat.arbitrarySizedST (fun X => HasTypeVar v_1 X t_1) initSize;
+              return Prod.mk (CedarExpr.var X) (PathSet.somepaths (List.nil))),
+            (1,
+              match t_1 with
+              | CedarType.boolType (BoolType.tt) => do
+                let P ← Plausible.Arbitrary.arbitrary;
+                return
+                    Prod.mk (CedarExpr.binaryApp (BinaryOp.equals) (CedarExpr.lit P) (CedarExpr.lit P))
+                      (PathSet.somepaths (List.nil))
+              | _ => OptionT.fail),
+            (1,
+              match t_1 with
+              | CedarType.boolType (BoolType.ff) => do
+                let P1 ← Plausible.Arbitrary.arbitrary;
+                do
+                  let P2 ← Plausible.Arbitrary.arbitrary;
+                  match DecOpt.decOpt (Eq (bne P1 P2) (Bool.true)) initSize with
+                    | Option.some Bool.true =>
+                      return
+                        Prod.mk (CedarExpr.binaryApp (BinaryOp.equals) (CedarExpr.lit P1) (CedarExpr.lit P2))
+                          (PathSet.allpaths)
+                    | _ => OptionT.fail
+              | _ => OptionT.fail),
+            (1,
+              match t_1 with
+              | CedarType.recordTypeNil => return Prod.mk (CedarExpr.recExprNil) (PathSet.somepaths (List.nil))
+              | _ => OptionT.fail)]
+      | Nat.succ size' =>
+        OptionTGen.backtrack
+          [(1,
+              match t_1 with
+              | CedarType.boolType (BoolType.ff) => do
+                let P ←
+                  ArbitrarySizedSuchThat.arbitrarySizedST
+                      (fun P => HasTypePrim v_1 P (CedarType.boolType (BoolType.ff))) initSize;
+                return Prod.mk (CedarExpr.lit P) (PathSet.allpaths)
+              | _ => OptionT.fail),
+            (1,
+              match DecOpt.decOpt (Eq (bne t_1 (CedarType.boolType (BoolType.ff))) (Bool.true)) initSize with
+              | Option.some Bool.true => do
+                let P ← ArbitrarySizedSuchThat.arbitrarySizedST (fun P => HasTypePrim v_1 P t_1) initSize;
+                return Prod.mk (CedarExpr.lit P) (PathSet.somepaths (List.nil))
+              | _ => OptionT.fail),
+            (1, do
+              let X ← ArbitrarySizedSuchThat.arbitrarySizedST (fun X => HasTypeVar v_1 X t_1) initSize;
+              return Prod.mk (CedarExpr.var X) (PathSet.somepaths (List.nil))),
+            (1,
+              match t_1 with
+              | CedarType.boolType (BoolType.tt) => do
+                let P ← Plausible.Arbitrary.arbitrary;
+                return
+                    Prod.mk (CedarExpr.binaryApp (BinaryOp.equals) (CedarExpr.lit P) (CedarExpr.lit P))
+                      (PathSet.somepaths (List.nil))
+              | _ => OptionT.fail),
+            (1,
+              match t_1 with
+              | CedarType.boolType (BoolType.ff) => do
+                let P1 ← Plausible.Arbitrary.arbitrary;
+                do
+                  let P2 ← Plausible.Arbitrary.arbitrary;
+                  match DecOpt.decOpt (Eq (bne P1 P2) (Bool.true)) initSize with
+                    | Option.some Bool.true =>
+                      return
+                        Prod.mk (CedarExpr.binaryApp (BinaryOp.equals) (CedarExpr.lit P1) (CedarExpr.lit P2))
+                          (PathSet.allpaths)
+                    | _ => OptionT.fail
+              | _ => OptionT.fail),
+            (1,
+              match t_1 with
+              | CedarType.recordTypeNil => return Prod.mk (CedarExpr.recExprNil) (PathSet.somepaths (List.nil))
+              | _ => OptionT.fail),
+            (Nat.succ size', do
+              let vE1_x1 ← aux_arb initSize size' a_1 v_1 (CedarType.boolType (BoolType.tt));
+              match vE1_x1 with
+                | Prod.mk E1 x1 => do
+                  let vE2_x2 ← aux_arb initSize size' (mergeExprs a_1 x1) v_1 t_1;
+                  match vE2_x2 with
+                    | Prod.mk E2 x2 => do
+                      let E3 ← Plausible.Arbitrary.arbitrary;
+                      return Prod.mk (CedarExpr.ite E1 E2 E3) (mergeExprs x1 x2)
+                    | _ => OptionT.fail
+                | _ => OptionT.fail),
+            (Nat.succ size', do
+              let vE1_x1 ← aux_arb initSize size' a_1 v_1 (CedarType.boolType (BoolType.ff));
+              match vE1_x1 with
+                | Prod.mk E1 x1 => do
+                  let vE3_x3 ← aux_arb initSize size' a_1 v_1 t_1;
+                  match vE3_x3 with
+                    | Prod.mk E3 x3 => do
+                      let E2 ← Plausible.Arbitrary.arbitrary;
+                      return Prod.mk (CedarExpr.ite E1 E2 E3) x3
+                    | _ => OptionT.fail
+                | _ => OptionT.fail),
+            (Nat.succ size', do
+              let vE1_E2_x ← aux_arb initSize size' a_1 v_1 t_1;
+              match vE1_E2_x with
+                | Prod.mk (CedarExpr.ite E1 E2 (CedarExpr.lit (Prim.boolean (Bool.false)))) x =>
+                  return Prod.mk (CedarExpr.andExpr E1 E2) x
+                | _ => OptionT.fail),
+            (Nat.succ size', do
+              let vE1_E2_x ← aux_arb initSize size' a_1 v_1 t_1;
+              match vE1_E2_x with
+                | Prod.mk (CedarExpr.ite E1 (CedarExpr.lit (Prim.boolean (Bool.true))) E2) x =>
+                  return Prod.mk (CedarExpr.orExpr E1 E2) x
+                | _ => OptionT.fail),
+            (Nat.succ size',
+              match t_1 with
+              | CedarType.boolType (BoolType.anyBool) => do
+                let ve_x ← aux_arb initSize size' a_1 v_1 (CedarType.boolType (BoolType.anyBool));
+                match ve_x with
+                  | Prod.mk e x => return Prod.mk (CedarExpr.unaryApp (UnaryOp.not) e) (PathSet.somepaths (List.nil))
+                  | _ => OptionT.fail
+              | _ => OptionT.fail),
+            (Nat.succ size',
+              match t_1 with
+              | CedarType.boolType (BoolType.ff) => do
+                let ve_x ← aux_arb initSize size' a_1 v_1 (CedarType.boolType (BoolType.tt));
+                match ve_x with
+                  | Prod.mk e x => return Prod.mk (CedarExpr.unaryApp (UnaryOp.not) e) (PathSet.allpaths)
+                  | _ => OptionT.fail
+              | _ => OptionT.fail),
+            (Nat.succ size',
+              match t_1 with
+              | CedarType.boolType (BoolType.tt) => do
+                let ve_x ← aux_arb initSize size' a_1 v_1 (CedarType.boolType (BoolType.ff));
+                match ve_x with
+                  | Prod.mk e x => return Prod.mk (CedarExpr.unaryApp (UnaryOp.not) e) (PathSet.somepaths (List.nil))
+                  | _ => OptionT.fail
+              | _ => OptionT.fail),
+            (Nat.succ size',
+              match t_1 with
+              | CedarType.intType => do
+                let ve_x ← aux_arb initSize size' a_1 v_1 (CedarType.intType);
+                match ve_x with
+                  | Prod.mk e x => return Prod.mk (CedarExpr.unaryApp (UnaryOp.neg) e) (PathSet.somepaths (List.nil))
+                  | _ => OptionT.fail
+              | _ => OptionT.fail),
+            (Nat.succ size',
+              match t_1 with
+              | CedarType.boolType (BoolType.anyBool) => do
+                let ve_x ← aux_arb initSize size' a_1 v_1 (CedarType.stringType);
+                match ve_x with
+                  | Prod.mk e x => do
+                    let P ← Plausible.Arbitrary.arbitrary;
+                    return Prod.mk (CedarExpr.unaryApp (UnaryOp.like P) e) (PathSet.somepaths (List.nil))
+                  | _ => OptionT.fail
+              | _ => OptionT.fail),
+            (Nat.succ size',
+              match t_1 with
+              | CedarType.boolType (BoolType.anyBool) => do
+                let vE1_x1 ← aux_arb initSize size' a_1 v_1 (CedarType.intType);
+                match vE1_x1 with
+                  | Prod.mk E1 x1 => do
+                    let vE2_x2 ← aux_arb initSize size' a_1 v_1 (CedarType.intType);
+                    match vE2_x2 with
+                      | Prod.mk E2 x2 =>
+                        return Prod.mk (CedarExpr.binaryApp (BinaryOp.less) E1 E2) (PathSet.somepaths (List.nil))
+                      | _ => OptionT.fail
+                  | _ => OptionT.fail
+              | _ => OptionT.fail),
+            (Nat.succ size',
+              match t_1 with
+              | CedarType.boolType (BoolType.anyBool) => do
+                let vE1_x1 ← aux_arb initSize size' a_1 v_1 (CedarType.intType);
+                match vE1_x1 with
+                  | Prod.mk E1 x1 => do
+                    let vE2_x2 ← aux_arb initSize size' a_1 v_1 (CedarType.intType);
+                    match vE2_x2 with
+                      | Prod.mk E2 x2 =>
+                        return Prod.mk (CedarExpr.binaryApp (BinaryOp.lessEq) E1 E2) (PathSet.somepaths (List.nil))
+                      | _ => OptionT.fail
+                  | _ => OptionT.fail
+              | _ => OptionT.fail),
+            (Nat.succ size',
+              match t_1 with
+              | CedarType.intType => do
+                let vE1_x1 ← aux_arb initSize size' a_1 v_1 (CedarType.intType);
+                match vE1_x1 with
+                  | Prod.mk E1 x1 => do
+                    let vE2_x2 ← aux_arb initSize size' a_1 v_1 (CedarType.intType);
+                    match vE2_x2 with
+                      | Prod.mk E2 x2 =>
+                        return Prod.mk (CedarExpr.binaryApp (BinaryOp.add) E1 E2) (PathSet.somepaths (List.nil))
+                      | _ => OptionT.fail
+                  | _ => OptionT.fail
+              | _ => OptionT.fail),
+            (Nat.succ size',
+              match t_1 with
+              | CedarType.intType => do
+                let vE1_x1 ← aux_arb initSize size' a_1 v_1 (CedarType.intType);
+                match vE1_x1 with
+                  | Prod.mk E1 x1 => do
+                    let vE2_x2 ← aux_arb initSize size' a_1 v_1 (CedarType.intType);
+                    match vE2_x2 with
+                      | Prod.mk E2 x2 =>
+                        return Prod.mk (CedarExpr.binaryApp (BinaryOp.sub) E1 E2) (PathSet.somepaths (List.nil))
+                      | _ => OptionT.fail
+                  | _ => OptionT.fail
+              | _ => OptionT.fail),
+            (Nat.succ size',
+              match t_1 with
+              | CedarType.intType => do
+                let vE1_x1 ← aux_arb initSize size' a_1 v_1 (CedarType.intType);
+                match vE1_x1 with
+                  | Prod.mk E1 x1 => do
+                    let vE2_x2 ← aux_arb initSize size' a_1 v_1 (CedarType.intType);
+                    match vE2_x2 with
+                      | Prod.mk E2 x2 =>
+                        return Prod.mk (CedarExpr.binaryApp (BinaryOp.mul) E1 E2) (PathSet.somepaths (List.nil))
+                      | _ => OptionT.fail
+                  | _ => OptionT.fail
+              | _ => OptionT.fail),
+            (Nat.succ size',
+              match t_1 with
+              | CedarType.recordTypeCons i b T TR =>
+                match DecOpt.decOpt (RecordType TR) initSize with
+                | Option.some Bool.true => do
+                  let ve_x ← aux_arb initSize size' a_1 v_1 T;
+                  match ve_x with
+                    | Prod.mk e x => do
+                      let vR_rx ← aux_arb initSize size' a_1 v_1 TR;
+                      match vR_rx with
+                        | Prod.mk R rx => return Prod.mk (CedarExpr.recExprCons i e R) (PathSet.somepaths (List.nil))
+                        | _ => OptionT.fail
+                    | _ => OptionT.fail
+                | _ => OptionT.fail
+              | _ => OptionT.fail),
+            (Nat.succ size',
+              match t_1 with
+              | CedarType.setType T => do
+                let ve_x ← aux_arb initSize size' a_1 v_1 T;
+                match ve_x with
+                  | Prod.mk e x =>
+                    return Prod.mk (CedarExpr.setExprCons e (CedarExpr.setExprNil)) (PathSet.somepaths (List.nil))
+                  | _ => OptionT.fail
+              | _ => OptionT.fail),
+            (Nat.succ size',
+              match t_1 with
+              | CedarType.setType T => do
+                let ve_x ← aux_arb initSize size' a_1 v_1 T;
+                match ve_x with
+                  | Prod.mk e x => do
+                    let vR_rx ← aux_arb initSize size' a_1 v_1 (CedarType.setType T);
+                    match vR_rx with
+                      | Prod.mk R rx => return Prod.mk (CedarExpr.setExprCons e R) (PathSet.somepaths (List.nil))
+                      | _ => OptionT.fail
+                  | _ => OptionT.fail
+              | _ => OptionT.fail)]
+    fun size => aux_arb size size a_1 v_1 t_1
+-/
 #guard_msgs(info, drop warning) in
 #derive_generator (fun (ex : (CedarExpr × PathSet)) => HasType a v ex t)
