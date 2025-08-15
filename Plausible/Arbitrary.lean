@@ -75,6 +75,11 @@ instance [Arbitrary α] : Arbitrary (Option α) where
 instance [Arbitrary α] : Arbitrary (List α) where
   arbitrary := listOf Arbitrary.arbitrary
 
+/-- If we have `Arbitrary` instances for `α` and `β`,
+    cthen we get an `Arbitrary (α × β)` instance -/
+instance [Arbitrary α] [Arbitrary β] : Arbitrary (α × β) where
+  arbitrary := Prod.mk <$> Arbitrary.arbitrary <*> Arbitrary.arbitrary
+
 namespace Arbitrary
 
 /-- Samples from the generator associated with the `Arbitrary` instance for a type,
