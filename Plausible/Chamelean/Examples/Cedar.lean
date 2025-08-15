@@ -276,7 +276,7 @@ inductive CedarType where
 | setType (ty : CedarType)
 | recordTypeNil
 | recordTypeCons (s : String) (opt : Bool) (ty : CedarType) (rest : CedarType)
-deriving Repr, BEq
+deriving BEq
 
 /-- Determines whether a `CedarType` is a `RecordType` -/
 inductive RecordType : CedarType → Prop where
@@ -332,7 +332,7 @@ def WfRecordType (ns : List EntityName) (ct : CedarType) : Prop :=
 @[nolint docBlame]
 inductive EntitySchemaEntry where
 | MkEntitySchemaEntry (ancestors : List EntityName) (attrs : List (String × Bool × CedarType))
-deriving Repr, BEq
+deriving BEq
 
 @[nolint docBlame]
 inductive WfAttrs : List EntityName → List (String × Bool × CedarType) → Prop where
@@ -364,7 +364,7 @@ inductive WfETS : List EntityName → List EntityName → List (EntityName × En
 @[nolint docBlame]
 inductive ActionSchemaEntry where
 | MkActionSchemaEntry (prin : List EntityName) (res : List EntityName) (contextType : List (String × Bool × CedarType))
-deriving Repr, BEq
+deriving BEq
 
 /-- LATER: Allow more than one principal and resource -/
 inductive WfACT : List EntityName → (EntityUID × ActionSchemaEntry) → Prop where
@@ -388,7 +388,7 @@ inductive WfACTS : List EntityName → List (EntityUID × ActionSchemaEntry) →
 @[nolint docBlame]
 inductive Schema where
 | MkSchema (ets : List (EntityName × EntitySchemaEntry)) (acts : List (EntityUID × ActionSchemaEntry))
-deriving Repr, BEq
+deriving BEq
 
 @[nolint docBlame]
 inductive WfSchema : List EntityName → Schema → Prop where
@@ -439,7 +439,7 @@ inductive GetEntityAttr : List (EntityName × EntitySchemaEntry) → (EntityName
 @[nolint docBlame]
 inductive RequestType : Type where
 | MkRequest (prin : EntityName) (act : EntityUID) (res : EntityName) (ctxt : List (String × Bool × CedarType))
-deriving Repr, BEq
+deriving BEq
 
 /-- Converts a context description in RequestType to a Cedar record type -/
 inductive ReqContextToCedarType : List (String × Bool × CedarType) → CedarType → Prop where
@@ -479,7 +479,7 @@ inductive ActionSchemaToRequestTypes : List (EntityUID × ActionSchemaEntry) →
 @[nolint docBlame]
 inductive Environment : Type where
 | MkEnvironment (schema : Schema) (reqType : RequestType)
-deriving Repr, BEq
+deriving BEq
 
 @[nolint docBlame]
 inductive SchemaToEnvironments : Schema → List RequestType → List Environment → Prop where
@@ -811,3 +811,107 @@ inductive HasType : PathSet → Environment → (Expr × PathSet) → CedarType 
     GetEntityAttr ets (n, fn, false) T →
     HasType a V (e, x) (CedarType.entityType n) →
     HasType a V ((Expr.getAttr e fn), PathSet.somepaths []) T
+
+------------------------------
+-- Pretty printing for types
+-------------------------------
+def stringOfBooltype (b : BoolType) : String :=
+    match b with
+    | BoolType.anyBool => "Bool"
+    | BoolType.tt => "True"
+    | BoolType.ff => "False"
+
+instance : ToString BoolType where
+  toString := stringOfBooltype
+
+instance : Repr BoolType where
+  reprPrec boolTy _ := toString boolTy
+
+def stringOfCedartype (t : CedarType) : String :=
+  match t with
+    | CedarType.boolType b => stringOfBooltype b
+    | CedarType.intType => "Int"
+    | CedarType.stringType => "String"
+    | CedarType.entityType n => toString n
+    | CedarType.setType t => "Set<" ++ stringOfCedartype t ++ ">"
+    | CedarType.recordTypeNil => "{}"
+    | CedarType.recordTypeCons s o t' CedarType.recordTypeNil =>
+        "{" ++ s ++ ":" ++ (if o then "?" else " ") ++ stringOfCedartype t' ++ "}"
+    | CedarType.recordTypeCons s o t' tr =>
+        "{" ++ s ++ ":" ++ (if o then "?" else " ") ++ stringOfCedartype t' ++ ", " ++ stringOfRecordtype tr ++ "}"
+where
+  stringOfRecordtype (t : CedarType) : String :=
+    match t with
+    | CedarType.recordTypeNil => ""
+    | CedarType.recordTypeCons s o t' tr =>
+        s ++ ":" ++ (if o then "?" else " ") ++ stringOfCedartype t' ++ ", " ++ stringOfRecordtype tr
+    | _ => ""
+
+instance : ToString CedarType where
+  toString := stringOfCedartype
+
+instance : Repr CedarType where
+  reprPrec ty _ := toString ty
+
+def stringOfAttrs (attrs : List (String × Bool × CedarType)) : String :=
+  match attrs with
+  | [] => ""
+  | [(s, o, t')] => s ++ ":" ++ (if o then " " else "? ") ++ stringOfCedartype t'
+  | (s, o, t')::attrs' => s ++ ":" ++ (if o then " " else "? ") ++ stringOfCedartype t' ++ ", " ++ stringOfAttrs attrs'
+
+def stringOfEse (ancs : List EntityName) (attrs : List (String × Bool × CedarType)) : String :=
+  (match ancs with
+  | [] => " "
+  | _ => " in " ++ toString ancs) ++
+  (match attrs with
+  | [] => ""
+  | _ => " { " ++ stringOfAttrs attrs ++ " }")
+
+instance : ToString EntitySchemaEntry where
+  toString := fun ese =>
+      match ese with
+      | EntitySchemaEntry.MkEntitySchemaEntry ancs attrs => stringOfEse ancs attrs
+
+instance : Repr EntitySchemaEntry where
+  reprPrec ese _ := toString ese
+
+def stringOfAse (prin : List EntityName) (res : List EntityName) (ct : List (String × Bool × CedarType)) : String :=
+    "{ principal: " ++ toString prin ++
+    "; resource: " ++ toString res ++
+    (match ct with | [] => "" | _ => "; context: {" ++ stringOfAttrs ct ++ " }") ++ " }"
+
+instance : ToString ActionSchemaEntry where
+  toString := fun ase =>
+        match ase with
+        | ActionSchemaEntry.MkActionSchemaEntry ps rs ct => stringOfAse ps rs ct
+
+instance : Repr ActionSchemaEntry where
+  reprPrec ase _ := toString ase
+
+def stringOfSchemaEts (eses : List (EntityName × EntitySchemaEntry)) : String :=
+    match eses with
+    | [] => ""
+    | (n, ese)::eses' => "entity " ++ toString n ++ toString ese ++ "; " ++ stringOfSchemaEts eses'
+
+def stringOfSchemaActs (acts : List (EntityUID × ActionSchemaEntry)) : String :=
+    match acts with
+    | [] => ""
+    | (uid, act)::acts' => "action " ++ toString uid ++ " appliesTo " ++ toString act ++ "; " ++ stringOfSchemaActs acts'
+
+def stringOfSchema (s : Schema) : String :=
+    match s with
+    | Schema.MkSchema ets acts => stringOfSchemaEts ets ++ stringOfSchemaActs acts
+
+instance : ToString Schema where
+  toString := stringOfSchema
+
+instance : Repr Schema where
+  reprPrec s _ := toString s
+
+instance : ToString PathSet where
+  toString := fun ps => match ps with
+    | PathSet.allpaths => "allpaths"
+    | PathSet.somepaths paths => "somepaths " ++ toString paths
+
+instance : Repr PathSet where
+  reprPrec pathset _ := toString pathset
