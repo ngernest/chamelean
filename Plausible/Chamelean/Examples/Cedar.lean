@@ -181,6 +181,9 @@ def stringOfExpr (e : Expr) : String :=
 instance : ToString Expr where
   toString := stringOfExpr
 
+instance : Repr Expr where
+  reprPrec e _ := toString e
+
 instance : ToString Request where
   toString := fun r => match r with
     | Request.MkReq p a res c =>
@@ -253,7 +256,9 @@ inductive SetEntityValues : Expr → Prop where
     SetEntityValues r →
     SetEntityValues (Expr.setExprCons (Expr.lit (Prim.entityUID uid)) r)
 
+------------------------------------------------------
 -- Types
+------------------------------------------------------
 
 /-- Boolean types -/
 inductive BoolType where
@@ -320,8 +325,9 @@ inductive WfCedarType : List EntityName → CedarType → Prop where
 def WfRecordType (ns : List EntityName) (ct : CedarType) : Prop :=
   WfCedarType ns ct ∧ RecordType ct
 
-
+------------------------------------------------------
 -- Schemas
+------------------------------------------------------
 
 @[nolint docBlame]
 inductive EntitySchemaEntry where
@@ -426,7 +432,9 @@ inductive GetEntityAttr : List (EntityName × EntitySchemaEntry) → (EntityName
     GetEntityAttr R (n, fn, b) T →
     GetEntityAttr ((n1, E)::R) (n, fn, b) T
 
+------------------------------------------------------
 -- Environments
+------------------------------------------------------
 
 @[nolint docBlame]
 inductive RequestType : Type where
@@ -480,3 +488,118 @@ inductive SchemaToEnvironments : Schema → List RequestType → List Environmen
 | MkEnvsCons : ∀ r rs s envs,
     SchemaToEnvironments s rs envs →
     SchemaToEnvironments s (r::rs) ((Environment.MkEnvironment s r)::envs)
+
+------------------------------------------------------
+-- Subtyping
+------------------------------------------------------
+
+/-- Note: Cedar has no width subtyping, just depth -/
+inductive SubType : CedarType → CedarType → Prop where
+| SBoolAny : ∀ B,
+    SubType (CedarType.boolType B) (CedarType.boolType BoolType.anyBool)
+| SSet : ∀ T1 T2,
+    SubType T1 T2 →
+    SubType (CedarType.setType T1) (CedarType.setType T2)
+| SRecEmpty :
+    SubType CedarType.recordTypeNil CedarType.recordTypeNil
+| SRecAttr : ∀ A o T1 T2 R1 R2,
+    SubType T1 T2 →
+    RecordType R2 →
+    SubType R1 R2 →
+    RecordType R1 →
+    SubType (CedarType.recordTypeCons A o T1 R1) (CedarType.recordTypeCons A o T2 R2)
+| ST : ∀ T, SubType T T
+
+------------------------------------------------------
+-- Typing: Primitives and Variables
+------------------------------------------------------
+
+@[nolint docBlame]
+inductive HasTypePrim : Environment → Prim → CedarType → Prop where
+| TTrue : ∀ V, HasTypePrim V (Prim.boolean true) (CedarType.boolType BoolType.tt)
+| TFalse : ∀ V, HasTypePrim V (Prim.boolean false) (CedarType.boolType BoolType.ff)
+| TInt : ∀ V i, HasTypePrim V (Prim.int i) CedarType.intType
+| TString : ∀ V s, HasTypePrim V (Prim.stringLit s) CedarType.stringType
+| TEntity : ∀ ETS ACTS n i R,
+    DefinedEntity ETS n →
+    HasTypePrim
+      (Environment.MkEnvironment (Schema.MkSchema ETS ACTS) R)
+      (Prim.entityUID (EntityUID.MkEntityUID n i))
+      (CedarType.entityType n)
+
+@[nolint docBlame]
+inductive HasTypeVar : Environment → Var → CedarType → Prop where
+| TPrincipal : ∀ s P A R C,
+    HasTypeVar (Environment.MkEnvironment s (RequestType.MkRequest P A R C)) Var.principal (CedarType.entityType P)
+| TAction : ∀ s P n i R C,
+    HasTypeVar (Environment.MkEnvironment s (RequestType.MkRequest P (EntityUID.MkEntityUID n i) R C)) Var.action (CedarType.entityType n)
+| TResource : ∀ s P A R C,
+    HasTypeVar (Environment.MkEnvironment s (RequestType.MkRequest P A R C)) Var.resource (CedarType.entityType R)
+| TContext : ∀ s P A R C T,
+    ReqContextToCedarType C T →
+    HasTypeVar (Environment.MkEnvironment s (RequestType.MkRequest P A R C)) Var.context T
+
+@[nolint docBlame]
+inductive BindAttrType : List EntityName → (CedarType × String × Bool) → CedarType → Prop where
+| BindNow : ∀ x t b r ns,
+    WfRecordType ns r →
+    BindAttrType ns ((CedarType.recordTypeCons x b t r), x, b) t
+| BindLater : ∀ x y b i t1 t r ns,
+    ¬(x = y) →
+    WfRecordType ns r →
+    BindAttrType ns (r, x, b) t1 →
+    BindAttrType ns ((CedarType.recordTypeCons y i t r), x, b) t1
+
+/-- A PathSet is a Cedar typing "capability" -- it is a set of accessible record-access expressions, or infinity (meaning all are accessible) -/
+inductive PathSet : Type where
+| allpaths
+| somepaths (paths : List Expr)
+deriving Repr, BEq
+
+------------------------------------------------------
+-- Typing: Defining "Capabilities" for record access
+------------------------------------------------------
+
+/-- Membership test of `x` in `ps` -/
+def validPathExpr (x : Expr) (ps : PathSet) : Bool :=
+  let rec aux (xs : List Expr) : Bool :=
+    match xs with
+    | [] => false
+    | y::ys =>
+        if x == y then true else aux ys
+  match ps with
+  | PathSet.allpaths => true
+  | PathSet.somepaths xs => aux xs
+
+/-- Intersects two pathsets -/
+def interExprs (ps : PathSet) (ys : PathSet) : PathSet :=
+  let rec aux (xs : List Expr) : List Expr :=
+    match xs with
+    | [] => []
+    | x::xs' =>
+        if validPathExpr x ys then x::(aux xs')
+        else aux xs'
+  match ps with
+  | PathSet.allpaths => ys
+  | PathSet.somepaths xs => PathSet.somepaths (aux xs)
+
+/-- returns `l` with `x` removed -/
+def subExprs (x : Expr) (l : List Expr) : List Expr :=
+   match l with
+   | [] => []
+   | y::ys =>
+      if x == y then ys
+      else y::(subExprs x ys)
+
+/-- union of `xs` and `ys` -/
+def mergeExprs (xs : PathSet) (ys : PathSet) : PathSet :=
+  let rec aux (xs : List Expr) (ys : List Expr) : List Expr :=
+    match xs with
+    | [] => ys
+    | x::xs' => x::(aux xs' (subExprs x ys))
+  match xs with
+  | PathSet.allpaths => PathSet.allpaths
+  | PathSet.somepaths xs0 =>
+    match ys with
+    | PathSet.allpaths => PathSet.allpaths
+    | PathSet.somepaths ys0 => PathSet.somepaths (aux xs0 ys0)
