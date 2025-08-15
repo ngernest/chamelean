@@ -43,7 +43,8 @@ Similarly, to return the elements produced form a derived enumerator, users can 
 **2. Deriving constrained generators** (for inductive relations)                
 A *constrained* producer only produces values that satisfy a user-specified inductive relation. 
 
-We provide two command elaborators for deriving constrained generators/enumerators:
+We provide two commands for deriving constrained generators/enumerators. For example, 
+support we want to derive constrained producers of `Tree`s satisfying some inductive relation `balanced n t` (height-`n` trees that are `balanced`. To do so, the user would write:
 
 ```lean
 -- `#derive_generator` & `#derive_enumerator` derive constrained generators/enumerators 
@@ -63,6 +64,14 @@ instance of the `ArbitrarySizedSuchThat` / `EnumSizedSuchThat` typeclass (along 
 -- (we recommend using a smaller `Nat` as the fuel for enumerators to avoid stack overflow)
 #eval runSizedEnum (EnumSizedSuchThat.enumSizedST (fun t => balanced 5 t)) 3
 ```
+
+Some extra details about the grammar of the lambda-abstraction that is passed to `#derive_generator` / `#derive_enumerator`:
+
+Specifically: in the command
+```lean
+#derive_generator (fun (x : t) => P x1 ... x .... xn)
+```
+`P` must be an inductively defined relation, `x` is the value to be generated (the type annotation on `x` is required), and `x1 ... xn` are (implicitly universally quantified) variable names. Following QuickChick, we expect `x1, ..., xn` to be variable names (we don't support literals in the position of the `xi` currently). 
 
 **3. Deriving checkers (partial decision procedures)** (for inductive relations)                                 
 A checker for an inductively-defined `Prop` is a `Nat -> Option Bool` function, which 
