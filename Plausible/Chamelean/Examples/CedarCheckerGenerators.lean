@@ -19,6 +19,10 @@ deriving instance Arbitrary for
   Request, BoolType, CedarType, EntitySchemaEntry, ActionSchemaEntry, Schema,
   RequestType, Environment, PathSet
 
+--------------------------------------------------
+-- Checker & Generator for `RecordExpr` relation
+--------------------------------------------------
+
 /--
 info: Try this checker: instance : DecOpt (RecordExpr ce_1) where
   decOpt :=
@@ -81,6 +85,10 @@ info: Try this generator: instance : ArbitrarySizedSuchThat CedarExpr (fun ce_1 
 #guard_msgs(info, drop warning) in
 #derive_generator (fun (ce : CedarExpr) => RecordExpr ce)
 
+-----------------------------------------------
+-- Checker & Generator for `SetExpr` relation
+-----------------------------------------------
+
 
 /--
 info: Try this checker: instance : DecOpt (SetExpr ce_1) where
@@ -140,6 +148,10 @@ info: Try this generator: instance : ArbitrarySizedSuchThat CedarExpr (fun ce_1 
 #guard_msgs(info, drop warning) in
 #derive_generator (fun (ce : CedarExpr) => SetExpr ce)
 
+--------------------------------------------------
+-- Checker & Generator for `SetEntityValues` relation
+--------------------------------------------------
+
 /--
 info: Try this checker: instance : DecOpt (SetEntityValues ce_1) where
   decOpt :=
@@ -184,6 +196,10 @@ info: Try this generator: instance : ArbitrarySizedSuchThat CedarExpr (fun ce_1 
 -/
 #guard_msgs(info, drop warning) in
 #derive_generator (fun (ce : CedarExpr) => SetEntityValues ce)
+
+--------------------------------------------------
+-- Checker & Generator for `DefinedName` relation
+--------------------------------------------------
 
 /--
 info: Try this checker: instance : DecOpt (DefinedName ns_1 n_1) where
@@ -246,6 +262,10 @@ info: Try this generator: instance : ArbitrarySizedSuchThat EntityName (fun n_1 
 #guard_msgs(info, drop warning) in
 #derive_generator (fun (n : EntityName) => DefinedName ns n)
 
+--------------------------------------------------
+-- Checker & Generator for `DefinedNames` relation
+--------------------------------------------------
+
 /--
 info: Try this checker: instance : DecOpt (DefinedNames ns_1 ns0_1) where
   decOpt :=
@@ -291,3 +311,231 @@ info: Try this generator: instance : ArbitrarySizedSuchThat (List EntityName) (f
 -/
 #guard_msgs(info, drop warning) in
 #derive_generator (fun (ns0 : List EntityName) => DefinedNames ns ns0)
+
+--------------------------------------------------
+-- Checker & Generator for well-formed Cedar types
+--------------------------------------------------
+
+/--
+info: Try this checker: instance : DecOpt (WfCedarType ns_1 ct_1) where
+  decOpt :=
+    let rec aux_dec (initSize : Nat) (size : Nat) (ns_1 : List EntityName) (ct_1 : CedarType) : Option Bool :=
+      match size with
+      | Nat.zero =>
+        DecOpt.checkerBacktrack
+          [fun _ =>
+            match ct_1 with
+            | CedarType.boolType B => Option.some Bool.true
+            | _ => Option.some Bool.false,
+            fun _ =>
+            match ct_1 with
+            | CedarType.intType => Option.some Bool.true
+            | _ => Option.some Bool.false,
+            fun _ =>
+            match ct_1 with
+            | CedarType.stringType => Option.some Bool.true
+            | _ => Option.some Bool.false,
+            fun _ =>
+            match ct_1 with
+            | CedarType.entityType n => DecOpt.decOpt (DefinedName ns_1 n) initSize
+            | _ => Option.some Bool.false,
+            fun _ =>
+            match ct_1 with
+            | CedarType.recordTypeNil => Option.some Bool.true
+            | _ => Option.some Bool.false]
+      | Nat.succ size' =>
+        DecOpt.checkerBacktrack
+          [fun _ =>
+            match ct_1 with
+            | CedarType.boolType B => Option.some Bool.true
+            | _ => Option.some Bool.false,
+            fun _ =>
+            match ct_1 with
+            | CedarType.intType => Option.some Bool.true
+            | _ => Option.some Bool.false,
+            fun _ =>
+            match ct_1 with
+            | CedarType.stringType => Option.some Bool.true
+            | _ => Option.some Bool.false,
+            fun _ =>
+            match ct_1 with
+            | CedarType.entityType n => DecOpt.decOpt (DefinedName ns_1 n) initSize
+            | _ => Option.some Bool.false,
+            fun _ =>
+            match ct_1 with
+            | CedarType.recordTypeNil => Option.some Bool.true
+            | _ => Option.some Bool.false,
+            fun _ =>
+            match ct_1 with
+            | CedarType.setType T => aux_dec initSize size' ns_1 T
+            | _ => Option.some Bool.false,
+            fun _ =>
+            match ct_1 with
+            | CedarType.recordTypeCons fn o T1 (CedarType.recordTypeNil) => aux_dec initSize size' ns_1 T1
+            | _ => Option.some Bool.false,
+            fun _ =>
+            match ct_1 with
+            | CedarType.recordTypeCons fn o T1 (CedarType.recordTypeCons fn1 o1 T2 r) =>
+              DecOpt.andOptList
+                [aux_dec initSize size' ns_1 T1, aux_dec initSize size' ns_1 (CedarType.recordTypeCons fn1 o1 T2 r)]
+            | _ => Option.some Bool.false]
+    fun size => aux_dec size size ns_1 ct_1
+-/
+#guard_msgs(info, drop warning) in
+#derive_checker (WfCedarType ns ct)
+
+/--
+info: Try this generator: instance : ArbitrarySizedSuchThat CedarType (fun ct_1 => WfCedarType ns_1 ct_1) where
+  arbitrarySizedST :=
+    let rec aux_arb (initSize : Nat) (size : Nat) (ns_1 : List EntityName) : OptionT Plausible.Gen CedarType :=
+      match size with
+      | Nat.zero =>
+        OptionTGen.backtrack
+          [(1, do
+              let B ← Plausible.Arbitrary.arbitrary;
+              return CedarType.boolType B),
+            (1, return CedarType.intType), (1, return CedarType.stringType),
+            (1, do
+              let n ← ArbitrarySizedSuchThat.arbitrarySizedST (fun n => DefinedName ns_1 n) initSize;
+              return CedarType.entityType n),
+            (1, return CedarType.recordTypeNil)]
+      | Nat.succ size' =>
+        OptionTGen.backtrack
+          [(1, do
+              let B ← Plausible.Arbitrary.arbitrary;
+              return CedarType.boolType B),
+            (1, return CedarType.intType), (1, return CedarType.stringType),
+            (1, do
+              let n ← ArbitrarySizedSuchThat.arbitrarySizedST (fun n => DefinedName ns_1 n) initSize;
+              return CedarType.entityType n),
+            (1, return CedarType.recordTypeNil),
+            (Nat.succ size', do
+              let T ← aux_arb initSize size' ns_1;
+              return CedarType.setType T),
+            (Nat.succ size', do
+              let T1 ← aux_arb initSize size' ns_1;
+              do
+                let fn ← Plausible.Arbitrary.arbitrary;
+                do
+                  let o ← Plausible.Arbitrary.arbitrary;
+                  return CedarType.recordTypeCons fn o T1 (CedarType.recordTypeNil)),
+            (Nat.succ size', do
+              let T1 ← aux_arb initSize size' ns_1;
+              do
+                let vfn1_o1_T2_r ← aux_arb initSize size' ns_1;
+                match vfn1_o1_T2_r with
+                  | CedarType.recordTypeCons fn1 o1 T2 r => do
+                    let fn ← Plausible.Arbitrary.arbitrary;
+                    do
+                      let o ← Plausible.Arbitrary.arbitrary;
+                      return CedarType.recordTypeCons fn o T1 (CedarType.recordTypeCons fn1 o1 T2 r)
+                  | _ => OptionT.fail)]
+    fun size => aux_arb size size ns_1
+-/
+#guard_msgs(info, drop warning) in
+#derive_generator (fun (ct : CedarType) => WfCedarType ns ct)
+
+--------------------------------------------------
+-- Checker & Generator for well-formed record types
+--------------------------------------------------
+
+/--
+info: Try this checker: instance : DecOpt (WfRecordType ns_1 rt_1) where
+  decOpt :=
+    let rec aux_dec (initSize : Nat) (size : Nat) (ns_1 : List EntityName) (rt_1 : CedarType) : Option Bool :=
+      match size with
+      | Nat.zero =>
+        DecOpt.checkerBacktrack
+          [fun _ =>
+            match rt_1 with
+            | CedarType.recordTypeCons fn' o' T1' (CedarType.recordTypeCons fn1 o1 T2 r) =>
+              DecOpt.andOptList
+                [DecOpt.decOpt (WfCedarType ns_1 T1') initSize,
+                  DecOpt.decOpt (WfCedarType ns_1 (CedarType.recordTypeCons fn1 o1 T2 r)) initSize]
+            | _ => Option.some Bool.false,
+            fun _ =>
+            match rt_1 with
+            | CedarType.recordTypeCons fn' o' T1' (CedarType.recordTypeNil) =>
+              DecOpt.decOpt (WfCedarType ns_1 T1') initSize
+            | _ => Option.some Bool.false,
+            fun _ =>
+            match rt_1 with
+            | CedarType.recordTypeNil => Option.some Bool.true
+            | _ => Option.some Bool.false]
+      | Nat.succ size' =>
+        DecOpt.checkerBacktrack
+          [fun _ =>
+            match rt_1 with
+            | CedarType.recordTypeCons fn' o' T1' (CedarType.recordTypeCons fn1 o1 T2 r) =>
+              DecOpt.andOptList
+                [DecOpt.decOpt (WfCedarType ns_1 T1') initSize,
+                  DecOpt.decOpt (WfCedarType ns_1 (CedarType.recordTypeCons fn1 o1 T2 r)) initSize]
+            | _ => Option.some Bool.false,
+            fun _ =>
+            match rt_1 with
+            | CedarType.recordTypeCons fn' o' T1' (CedarType.recordTypeNil) =>
+              DecOpt.decOpt (WfCedarType ns_1 T1') initSize
+            | _ => Option.some Bool.false,
+            fun _ =>
+            match rt_1 with
+            | CedarType.recordTypeNil => Option.some Bool.true
+            | _ => Option.some Bool.false,
+            ]
+    fun size => aux_dec size size ns_1 rt_1
+-/
+#guard_msgs(info, drop warning) in
+#derive_checker (WfRecordType ns rt)
+
+/--
+info: Try this generator: instance : ArbitrarySizedSuchThat CedarType (fun rt_1 => WfRecordType ns_1 rt_1) where
+  arbitrarySizedST :=
+    let rec aux_arb (initSize : Nat) (size : Nat) (ns_1 : List EntityName) : OptionT Plausible.Gen CedarType :=
+      match size with
+      | Nat.zero =>
+        OptionTGen.backtrack
+          [(1, do
+              let T1' ← ArbitrarySizedSuchThat.arbitrarySizedST (fun T1' => WfCedarType ns_1 T1') initSize;
+              do
+                let vfn1_o1_T2_r ←
+                  ArbitrarySizedSuchThat.arbitrarySizedST (fun vfn1_o1_T2_r => WfCedarType ns_1 vfn1_o1_T2_r) initSize;
+                match vfn1_o1_T2_r with
+                  | CedarType.recordTypeCons fn1 o1 T2 r => do
+                    let fn' ← Plausible.Arbitrary.arbitrary;
+                    do
+                      let o' ← Plausible.Arbitrary.arbitrary;
+                      return CedarType.recordTypeCons fn' o' T1' (CedarType.recordTypeCons fn1 o1 T2 r)
+                  | _ => OptionT.fail),
+            (1, do
+              let T1' ← ArbitrarySizedSuchThat.arbitrarySizedST (fun T1' => WfCedarType ns_1 T1') initSize;
+              do
+                let fn' ← Plausible.Arbitrary.arbitrary;
+                do
+                  let o' ← Plausible.Arbitrary.arbitrary;
+                  return CedarType.recordTypeCons fn' o' T1' (CedarType.recordTypeNil)),
+            (1, return CedarType.recordTypeNil)]
+      | Nat.succ size' =>
+        OptionTGen.backtrack
+          [(1, do
+              let T1' ← ArbitrarySizedSuchThat.arbitrarySizedST (fun T1' => WfCedarType ns_1 T1') initSize;
+              do
+                let vfn1_o1_T2_r ←
+                  ArbitrarySizedSuchThat.arbitrarySizedST (fun vfn1_o1_T2_r => WfCedarType ns_1 vfn1_o1_T2_r) initSize;
+                match vfn1_o1_T2_r with
+                  | CedarType.recordTypeCons fn1 o1 T2 r => do
+                    let fn' ← Plausible.Arbitrary.arbitrary;
+                    do
+                      let o' ← Plausible.Arbitrary.arbitrary;
+                      return CedarType.recordTypeCons fn' o' T1' (CedarType.recordTypeCons fn1 o1 T2 r)
+                  | _ => OptionT.fail),
+            (1, do
+              let T1' ← ArbitrarySizedSuchThat.arbitrarySizedST (fun T1' => WfCedarType ns_1 T1') initSize;
+              do
+                let fn' ← Plausible.Arbitrary.arbitrary;
+                do
+                  let o' ← Plausible.Arbitrary.arbitrary;
+                  return CedarType.recordTypeCons fn' o' T1' (CedarType.recordTypeNil)),
+            (1, return CedarType.recordTypeNil), ]
+    fun size => aux_arb size size ns_1
+-/
+#guard_msgs(info, drop warning) in
+#derive_generator (fun (rt : CedarType) => WfRecordType ns rt)

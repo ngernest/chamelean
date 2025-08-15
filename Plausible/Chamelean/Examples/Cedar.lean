@@ -322,9 +322,20 @@ inductive WfCedarType : List EntityName → CedarType → Prop where
     WfCedarType ns (CedarType.recordTypeCons fn1 o1 T2 r) →
     WfCedarType ns (CedarType.recordTypeCons fn o T1 (CedarType.recordTypeCons fn1 o1 T2 r))
 
-/-- Well-formed record types are types that are both well-formed and record types -/
-def WfRecordType (ns : List EntityName) (ct : CedarType) : Prop :=
-  WfCedarType ns ct ∧ RecordType ct
+/-- Well-formed record types are types that are both well-formed and record types.
+    Note: in the original Coq code, this inductive relation is produced using QuickChick's
+    ability to merge inductive relations (see "Merging Inductive Relations", PLDI '23).
+    Chamelean currently doesn't this ability, so this inductive relation has been
+    manually ported over to Lean based on the merged relation produced by QuickChick. -/
+inductive WfRecordType : List EntityName → CedarType → Prop where
+| WfRecordTypeConsConsRTcons : ∀ fn' o' T1' ns fn1 o1 T2 r,
+    WfCedarType ns (.recordTypeCons fn1 o1 T2 r) →
+    WfCedarType ns T1' →
+    WfRecordType ns (.recordTypeCons fn' o' T1' (.recordTypeCons fn1 o1 T2 r))
+| WfRecordTypeConsNilRTcons : ∀ fn' o' T1' ns,
+    WfCedarType ns T1' →
+    WfRecordType ns (.recordTypeCons fn' o' T1' .recordTypeNil)
+| WfRecordTypeNilRTnil : ∀ (ns : List EntityName), WfRecordType ns .recordTypeNil
 
 ------------------------------------------------------
 -- Schemas
