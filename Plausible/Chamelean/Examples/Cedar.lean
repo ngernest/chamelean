@@ -413,7 +413,7 @@ inductive WfSchema : List EntityName → Schema → Prop where
 inductive DefinedEntity : List (EntityName × EntitySchemaEntry) → EntityName → Prop where
 | DENow : ∀ n E R, DefinedEntity ((n, E)::R) n
 | DELater : ∀ n n1 E R,
-     ¬(n = n1) →
+     n != n1 →
     DefinedEntity R n →
     DefinedEntity ((n1, E)::R) n
 
@@ -430,7 +430,7 @@ inductive LookupEntityAttr : List (String × Bool × CedarType) → (String × B
 | LUNow : ∀ F B FS TF,
     LookupEntityAttr ((F, B, TF)::FS) (F, B) TF
 | LULater : ∀ F1 B1 F2 FS TF B,
-    ¬(F1 = F2) →
+    F1 != F2 →
     LookupEntityAttr FS (F1, B1) TF →
     LookupEntityAttr ((F2, B, TF)::FS) (F1, B1) TF
 
@@ -440,7 +440,7 @@ inductive GetEntityAttr : List (EntityName × EntitySchemaEntry) → (EntityName
     LookupEntityAttr E (fn, b) T →
     GetEntityAttr ((n, (EntitySchemaEntry.MkEntitySchemaEntry A E))::R) (n, fn, b) T
 | GELater : ∀ n n1 fn b E R T,
-    ¬(n = n1) →
+    n != n1 →
     GetEntityAttr R (n, fn, b) T →
     GetEntityAttr ((n1, E)::R) (n, fn, b) T
 
@@ -679,19 +679,19 @@ inductive HasType : PathSet → Environment → (CedarExpr × PathSet) → Cedar
     DefinedEntities ets ns →
     WfCedarType ns (CedarType.entityType N1) →
     HasType a V (e, x) (CedarType.entityType N2) →
-    ¬(N1 = N2) →
+    N1 != N2 →
     HasType a V ((CedarExpr.unaryApp (UnaryOp.is N1) e), PathSet.allpaths) (CedarType.boolType BoolType.ff)
 | TEqLitTrue : ∀ a V P,
     HasType a V ((CedarExpr.binaryApp BinaryOp.equals (CedarExpr.lit P) (CedarExpr.lit P)), PathSet.somepaths []) (CedarType.boolType BoolType.tt)
 | TEqLitFalse : ∀ a V P1 P2,
-    ¬(P1 = P2) →
+    P1 != P2 →
     HasType a V ((CedarExpr.binaryApp BinaryOp.equals (CedarExpr.lit P1) (CedarExpr.lit P2)), PathSet.allpaths) (CedarType.boolType BoolType.ff)
 | TEqEntity : ∀ a x1 x2 V E1 N1 E2 N2 ns ets acts R,
     V = (Environment.MkEnvironment (Schema.MkSchema ets acts) R) →
     DefinedEntities ets ns →
     WfCedarType ns (CedarType.entityType N1) →
     WfCedarType ns (CedarType.entityType N2) →
-    ¬(N1 = N2) →
+    N1 != N2 →
     HasType a V (E1, x1) (CedarType.entityType N1) →
     HasType a V (E2, x2) (CedarType.entityType N2) →
     HasType a V ((CedarExpr.binaryApp BinaryOp.equals E1 E2), PathSet.allpaths) (CedarType.boolType BoolType.ff)

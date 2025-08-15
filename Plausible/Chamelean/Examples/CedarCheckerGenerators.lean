@@ -603,7 +603,7 @@ info: Try this generator: instance : ArbitrarySizedSuchThat (List (String × Boo
 #derive_generator (fun (attrs : List (String × Bool × CedarType)) => WfAttrs ns attrs)
 
 ---------------------------------------------------------------------
--- Checker & Generator for well-formed ETs (`EntitySchemaEntry`)
+-- Checker & Generator for well-formed `EntitySchemaEntry`(ies)
 ---------------------------------------------------------------------
 /--
 info: Try this checker: instance : DecOpt (WfET ns_1 et_1) where
@@ -751,8 +751,9 @@ info: Try this generator: instance : ArbitrarySizedSuchThat (List (EntityName ×
 #derive_generator (fun (ets : List (EntityName × EntitySchemaEntry)) => WfETS ns ns0 ets)
 
 ---------------------------------------------------------------------
--- Checker & Generator for well-formed `ActionSchemaEntry`
+-- Checker & Generator for well-formed `ActionSchemaEntry`(ies)
 ---------------------------------------------------------------------
+
 /--
 info: Try this checker: instance : DecOpt (WfACT ns_1 act_1) where
   decOpt :=
@@ -890,3 +891,721 @@ info: Try this generator: instance : ArbitrarySizedSuchThat (List (EntityUID × 
 -/
 #guard_msgs(info, drop warning) in
 #derive_generator (fun (act : List (EntityUID × ActionSchemaEntry)) => WfACTS ns act)
+
+------------------------------------------------------------
+-- Checker & Generator for well-formed schemas
+------------------------------------------------------------
+/--
+info: Try this checker: instance : DecOpt (WfSchema ns_1 s_1) where
+  decOpt :=
+    let rec aux_dec (initSize : Nat) (size : Nat) (ns_1 : List EntityName) (s_1 : Schema) : Option Bool :=
+      match size with
+      | Nat.zero =>
+        DecOpt.checkerBacktrack
+          [fun _ =>
+            match s_1 with
+            | Schema.MkSchema ets acts =>
+              DecOpt.andOptList
+                [DecOpt.decOpt (WfACTS ns_1 acts) initSize, DecOpt.decOpt (WfETS ns_1 ns_1 ets) initSize]
+            | _ => Option.some Bool.false]
+      | Nat.succ size' =>
+        DecOpt.checkerBacktrack
+          [fun _ =>
+            match s_1 with
+            | Schema.MkSchema ets acts =>
+              DecOpt.andOptList
+                [DecOpt.decOpt (WfACTS ns_1 acts) initSize, DecOpt.decOpt (WfETS ns_1 ns_1 ets) initSize]
+            | _ => Option.some Bool.false,
+            ]
+    fun size => aux_dec size size ns_1 s_1
+-/
+#guard_msgs(info, drop warning) in
+#derive_checker (WfSchema ns s)
+
+/--
+info: Try this generator: instance : ArbitrarySizedSuchThat Schema (fun s_1 => WfSchema ns_1 s_1) where
+  arbitrarySizedST :=
+    let rec aux_arb (initSize : Nat) (size : Nat) (ns_1 : List EntityName) : OptionT Plausible.Gen Schema :=
+      match size with
+      | Nat.zero =>
+        OptionTGen.backtrack
+          [(1, do
+              let acts ← ArbitrarySizedSuchThat.arbitrarySizedST (fun acts => WfACTS ns_1 acts) initSize;
+              do
+                let ets ← ArbitrarySizedSuchThat.arbitrarySizedST (fun ets => WfETS ns_1 ns_1 ets) initSize;
+                return Schema.MkSchema ets acts)]
+      | Nat.succ size' =>
+        OptionTGen.backtrack
+          [(1, do
+              let acts ← ArbitrarySizedSuchThat.arbitrarySizedST (fun acts => WfACTS ns_1 acts) initSize;
+              do
+                let ets ← ArbitrarySizedSuchThat.arbitrarySizedST (fun ets => WfETS ns_1 ns_1 ets) initSize;
+                return Schema.MkSchema ets acts),
+            ]
+    fun size => aux_arb size size ns_1
+-/
+#guard_msgs(info, drop warning) in
+#derive_generator (fun (s : Schema) => WfSchema ns s)
+
+------------------------------------------------------------
+-- Checker & Generator for defined entities
+------------------------------------------------------------
+/--
+info: Try this checker: instance : DecOpt (DefinedEntity ets_1 n_1) where
+  decOpt :=
+    let rec aux_dec (initSize : Nat) (size : Nat) (ets_1 : List (EntityName × EntitySchemaEntry)) (n_1 : EntityName) :
+      Option Bool :=
+      match size with
+      | Nat.zero =>
+        DecOpt.checkerBacktrack
+          [fun _ =>
+            match ets_1 with
+            | List.cons (Prod.mk n E) R => DecOpt.decOpt (BEq.beq n n_1) initSize
+            | _ => Option.some Bool.false]
+      | Nat.succ size' =>
+        DecOpt.checkerBacktrack
+          [fun _ =>
+            match ets_1 with
+            | List.cons (Prod.mk n E) R => DecOpt.decOpt (BEq.beq n n_1) initSize
+            | _ => Option.some Bool.false,
+            fun _ =>
+            match ets_1 with
+            | List.cons (Prod.mk n1 E) R =>
+              DecOpt.andOptList [DecOpt.decOpt (Eq (bne n_1 n1) (Bool.true)) initSize, aux_dec initSize size' R n_1]
+            | _ => Option.some Bool.false]
+    fun size => aux_dec size size ets_1 n_1
+-/
+#guard_msgs(info, drop warning) in
+#derive_checker (DefinedEntity ets n)
+
+/--
+info: Try this generator: instance : ArbitrarySizedSuchThat EntityName (fun n_1 => DefinedEntity ets_1 n_1) where
+  arbitrarySizedST :=
+    let rec aux_arb (initSize : Nat) (size : Nat) (ets_1 : List (EntityName × EntitySchemaEntry)) :
+      OptionT Plausible.Gen EntityName :=
+      match size with
+      | Nat.zero =>
+        OptionTGen.backtrack
+          [(1,
+              match ets_1 with
+              | List.cons (Prod.mk n E) R => return n
+              | _ => OptionT.fail)]
+      | Nat.succ size' =>
+        OptionTGen.backtrack
+          [(1,
+              match ets_1 with
+              | List.cons (Prod.mk n E) R => return n
+              | _ => OptionT.fail),
+            (Nat.succ size',
+              match ets_1 with
+              | List.cons (Prod.mk n1 E) R => do
+                let n_1 ← aux_arb initSize size' R;
+                match DecOpt.decOpt (Eq (bne n_1 n1) (Bool.true)) initSize with
+                  | Option.some Bool.true => return n_1
+                  | _ => OptionT.fail
+              | _ => OptionT.fail)]
+    fun size => aux_arb size size ets_1
+-/
+#guard_msgs(info, drop warning) in
+#derive_generator (fun (n : EntityName) => DefinedEntity ets n)
+
+/--
+info: Try this checker: instance : DecOpt (DefinedEntities ets_1 n_1) where
+  decOpt :=
+    let rec aux_dec (initSize : Nat) (size : Nat) (ets_1 : List (EntityName × EntitySchemaEntry))
+      (n_1 : List EntityName) : Option Bool :=
+      match size with
+      | Nat.zero =>
+        DecOpt.checkerBacktrack
+          [fun _ =>
+            match n_1 with
+            | List.nil =>
+              match ets_1 with
+              | List.nil => Option.some Bool.true
+              | _ => Option.some Bool.false
+            | _ => Option.some Bool.false]
+      | Nat.succ size' =>
+        DecOpt.checkerBacktrack
+          [fun _ =>
+            match n_1 with
+            | List.nil =>
+              match ets_1 with
+              | List.nil => Option.some Bool.true
+              | _ => Option.some Bool.false
+            | _ => Option.some Bool.false,
+            fun _ =>
+            match n_1 with
+            | List.cons u_2 ns =>
+              match ets_1 with
+              | List.cons (Prod.mk n et) ets =>
+                DecOpt.andOptList [DecOpt.decOpt (BEq.beq u_2 n) initSize, aux_dec initSize size' ets ns]
+              | _ => Option.some Bool.false
+            | _ => Option.some Bool.false]
+    fun size => aux_dec size size ets_1 n_1
+-/
+#guard_msgs(info, drop warning) in
+#derive_checker (DefinedEntities ets n)
+
+/--
+info: Try this generator: instance : ArbitrarySizedSuchThat (List EntityName) (fun n_1 => DefinedEntities ets_1 n_1) where
+  arbitrarySizedST :=
+    let rec aux_arb (initSize : Nat) (size : Nat) (ets_1 : List (EntityName × EntitySchemaEntry)) :
+      OptionT Plausible.Gen (List EntityName) :=
+      match size with
+      | Nat.zero =>
+        OptionTGen.backtrack
+          [(1,
+              match ets_1 with
+              | List.nil => return List.nil
+              | _ => OptionT.fail)]
+      | Nat.succ size' =>
+        OptionTGen.backtrack
+          [(1,
+              match ets_1 with
+              | List.nil => return List.nil
+              | _ => OptionT.fail),
+            (Nat.succ size',
+              match ets_1 with
+              | List.cons (Prod.mk n et) ets => do
+                let ns ← aux_arb initSize size' ets;
+                return List.cons n ns
+              | _ => OptionT.fail)]
+    fun size => aux_arb size size ets_1
+-/
+#guard_msgs(info, drop warning) in
+#derive_generator (fun (n : List EntityName) => DefinedEntities ets n)
+
+---------------------------------------------
+-- Schema: LookupEntityAttr / GetEntityAttr
+---------------------------------------------
+
+/--
+info: Try this checker: instance : DecOpt (LookupEntityAttr l_1 fnb_1 t_1) where
+  decOpt :=
+    let rec aux_dec (initSize : Nat) (size : Nat) (l_1 : List (String × Bool × CedarType)) (fnb_1 : String × Bool)
+      (t_1 : CedarType) : Option Bool :=
+      match size with
+      | Nat.zero =>
+        DecOpt.checkerBacktrack
+          [fun _ =>
+            match fnb_1 with
+            | Prod.mk u_3 u_4 =>
+              match l_1 with
+              | List.cons (Prod.mk F (Prod.mk B TF)) FS =>
+                DecOpt.andOptList
+                  [DecOpt.decOpt (BEq.beq u_3 F) initSize,
+                    DecOpt.andOptList [DecOpt.decOpt (BEq.beq TF t_1) initSize, DecOpt.decOpt (BEq.beq u_4 B) initSize]]
+              | _ => Option.some Bool.false
+            | _ => Option.some Bool.false]
+      | Nat.succ size' =>
+        DecOpt.checkerBacktrack
+          [fun _ =>
+            match fnb_1 with
+            | Prod.mk u_3 u_4 =>
+              match l_1 with
+              | List.cons (Prod.mk F (Prod.mk B TF)) FS =>
+                DecOpt.andOptList
+                  [DecOpt.decOpt (BEq.beq u_3 F) initSize,
+                    DecOpt.andOptList [DecOpt.decOpt (BEq.beq TF t_1) initSize, DecOpt.decOpt (BEq.beq u_4 B) initSize]]
+              | _ => Option.some Bool.false
+            | _ => Option.some Bool.false,
+            fun _ =>
+            match fnb_1 with
+            | Prod.mk F1 B1 =>
+              match l_1 with
+              | List.cons (Prod.mk F2 (Prod.mk B TF)) FS =>
+                DecOpt.andOptList
+                  [DecOpt.decOpt (BEq.beq TF t_1) initSize,
+                    DecOpt.andOptList
+                      [DecOpt.decOpt (Eq (bne F1 F2) (Bool.true)) initSize,
+                        aux_dec initSize size' FS (Prod.mk F1 B1) t_1]]
+              | _ => Option.some Bool.false
+            | _ => Option.some Bool.false]
+    fun size => aux_dec size size l_1 fnb_1 t_1
+-/
+#guard_msgs(info, drop warning) in
+#derive_checker (LookupEntityAttr l fnb t)
+
+/--
+info: Try this generator: instance : ArbitrarySizedSuchThat (String × Bool) (fun fnb_1 => LookupEntityAttr l_1 fnb_1 t_1) where
+  arbitrarySizedST :=
+    let rec aux_arb (initSize : Nat) (size : Nat) (l_1 : List (String × Bool × CedarType)) (t_1 : CedarType) :
+      OptionT Plausible.Gen (String × Bool) :=
+      match size with
+      | Nat.zero =>
+        OptionTGen.backtrack
+          [(1,
+              match l_1 with
+              | List.cons (Prod.mk F (Prod.mk B TF)) FS =>
+                match DecOpt.decOpt (BEq.beq TF t_1) initSize with
+                | Option.some Bool.true => return Prod.mk F B
+                | _ => OptionT.fail
+              | _ => OptionT.fail)]
+      | Nat.succ size' =>
+        OptionTGen.backtrack
+          [(1,
+              match l_1 with
+              | List.cons (Prod.mk F (Prod.mk B TF)) FS =>
+                match DecOpt.decOpt (BEq.beq TF t_1) initSize with
+                | Option.some Bool.true => return Prod.mk F B
+                | _ => OptionT.fail
+              | _ => OptionT.fail),
+            (Nat.succ size',
+              match l_1 with
+              | List.cons (Prod.mk F2 (Prod.mk B TF)) FS =>
+                match DecOpt.decOpt (BEq.beq TF t_1) initSize with
+                | Option.some Bool.true => do
+                  let vF1_B1 ← aux_arb initSize size' FS t_1;
+                  match vF1_B1 with
+                    | Prod.mk F1 B1 =>
+                      match DecOpt.decOpt (Eq (bne F1 F2) (Bool.true)) initSize with
+                      | Option.some Bool.true => return Prod.mk F1 B1
+                      | _ => OptionT.fail
+                    | _ => OptionT.fail
+                | _ => OptionT.fail
+              | _ => OptionT.fail)]
+    fun size => aux_arb size size l_1 t_1
+-/
+#guard_msgs(info, drop warning) in
+#derive_generator (fun (fnb : (String × Bool)) => LookupEntityAttr l fnb t)
+
+/--
+info: Try this generator: instance : ArbitrarySizedSuchThat (EntityName × String × Bool) (fun nfn_1 => GetEntityAttr ets_1 nfn_1 t_1) where
+  arbitrarySizedST :=
+    let rec aux_arb (initSize : Nat) (size : Nat) (ets_1 : List (EntityName × EntitySchemaEntry)) (t_1 : CedarType) :
+      OptionT Plausible.Gen (EntityName × String × Bool) :=
+      match size with
+      | Nat.zero =>
+        OptionTGen.backtrack
+          [(1,
+              match ets_1 with
+              | List.cons (Prod.mk n (EntitySchemaEntry.MkEntitySchemaEntry A E)) R => do
+                let vfn_b ←
+                  ArbitrarySizedSuchThat.arbitrarySizedST (fun vfn_b => LookupEntityAttr E vfn_b t_1) initSize;
+                match vfn_b with
+                  | Prod.mk fn b => return Prod.mk n (Prod.mk fn b)
+                  | _ => OptionT.fail
+              | _ => OptionT.fail)]
+      | Nat.succ size' =>
+        OptionTGen.backtrack
+          [(1,
+              match ets_1 with
+              | List.cons (Prod.mk n (EntitySchemaEntry.MkEntitySchemaEntry A E)) R => do
+                let vfn_b ←
+                  ArbitrarySizedSuchThat.arbitrarySizedST (fun vfn_b => LookupEntityAttr E vfn_b t_1) initSize;
+                match vfn_b with
+                  | Prod.mk fn b => return Prod.mk n (Prod.mk fn b)
+                  | _ => OptionT.fail
+              | _ => OptionT.fail),
+            (Nat.succ size',
+              match ets_1 with
+              | List.cons (Prod.mk n1 E) R => do
+                let vn_fn_b ← aux_arb initSize size' R t_1;
+                match vn_fn_b with
+                  | Prod.mk n (Prod.mk fn b) =>
+                    match DecOpt.decOpt (Eq (bne n n1) (Bool.true)) initSize with
+                    | Option.some Bool.true => return Prod.mk n (Prod.mk fn b)
+                    | _ => OptionT.fail
+                  | _ => OptionT.fail
+              | _ => OptionT.fail)]
+    fun size => aux_arb size size ets_1 t_1
+-/
+#guard_msgs(info, drop warning) in
+#derive_generator (fun (nfn : (EntityName × String × Bool)) => GetEntityAttr ets nfn t)
+
+/--
+info: Try this checker: instance : DecOpt (ReqContextToCedarType c_1 t_1) where
+  decOpt :=
+    let rec aux_dec (initSize : Nat) (size : Nat) (c_1 : List (String × Bool × CedarType)) (t_1 : CedarType) :
+      Option Bool :=
+      match size with
+      | Nat.zero =>
+        DecOpt.checkerBacktrack
+          [fun _ =>
+            match t_1 with
+            | CedarType.recordTypeNil =>
+              match c_1 with
+              | List.nil => Option.some Bool.true
+              | _ => Option.some Bool.false
+            | _ => Option.some Bool.false]
+      | Nat.succ size' =>
+        DecOpt.checkerBacktrack
+          [fun _ =>
+            match t_1 with
+            | CedarType.recordTypeNil =>
+              match c_1 with
+              | List.nil => Option.some Bool.true
+              | _ => Option.some Bool.false
+            | _ => Option.some Bool.false,
+            fun _ =>
+            match t_1 with
+            | CedarType.recordTypeCons u_2 u_3 u_4 TR =>
+              match c_1 with
+              | List.cons (Prod.mk i (Prod.mk B T)) R =>
+                DecOpt.andOptList
+                  [DecOpt.decOpt (BEq.beq u_3 B) initSize,
+                    DecOpt.andOptList
+                      [DecOpt.decOpt (BEq.beq u_4 T) initSize,
+                        DecOpt.andOptList [DecOpt.decOpt (BEq.beq u_2 i) initSize, aux_dec initSize size' R TR]]]
+              | _ => Option.some Bool.false
+            | _ => Option.some Bool.false]
+    fun size => aux_dec size size c_1 t_1
+-/
+#guard_msgs(info, drop warning) in
+#derive_checker (ReqContextToCedarType c t)
+
+/--
+info: Try this generator: instance : ArbitrarySizedSuchThat CedarType (fun t_1 => ReqContextToCedarType c_1 t_1) where
+  arbitrarySizedST :=
+    let rec aux_arb (initSize : Nat) (size : Nat) (c_1 : List (String × Bool × CedarType)) :
+      OptionT Plausible.Gen CedarType :=
+      match size with
+      | Nat.zero =>
+        OptionTGen.backtrack
+          [(1,
+              match c_1 with
+              | List.nil => return CedarType.recordTypeNil
+              | _ => OptionT.fail)]
+      | Nat.succ size' =>
+        OptionTGen.backtrack
+          [(1,
+              match c_1 with
+              | List.nil => return CedarType.recordTypeNil
+              | _ => OptionT.fail),
+            (Nat.succ size',
+              match c_1 with
+              | List.cons (Prod.mk i (Prod.mk B T)) R => do
+                let TR ← aux_arb initSize size' R;
+                return CedarType.recordTypeCons i B T TR
+              | _ => OptionT.fail)]
+    fun size => aux_arb size size c_1
+-/
+#guard_msgs(info, drop warning) in
+#derive_generator (fun (t : CedarType) => ReqContextToCedarType c t)
+
+/--
+info: Try this generator: instance : ArbitrarySizedSuchThat (List RequestType) (fun reqs_1 => ActionToRequestTypes e_1 n_1 ns_1 l_1 rs_1 reqs_1)
+    where
+  arbitrarySizedST :=
+    let rec aux_arb (initSize : Nat) (size : Nat) (e_1 : EntityUID) (n_1 : EntityName) (ns_1 : List EntityName)
+      (l_1 : List (String × Bool × CedarType)) (rs_1 : List RequestType) : OptionT Plausible.Gen (List RequestType) :=
+      match size with
+      | Nat.zero =>
+        OptionTGen.backtrack
+          [(1,
+              match ns_1 with
+              | List.cons r (List.nil) => return List.cons (RequestType.MkRequest n_1 e_1 r l_1) rs_1
+              | _ => OptionT.fail)]
+      | Nat.succ size' =>
+        OptionTGen.backtrack
+          [(1,
+              match ns_1 with
+              | List.cons r (List.nil) => return List.cons (RequestType.MkRequest n_1 e_1 r l_1) rs_1
+              | _ => OptionT.fail),
+            (Nat.succ size',
+              match ns_1 with
+              | List.cons r rs => do
+                let reqs ← aux_arb initSize size' e_1 n_1 rs l_1 rs_1;
+                return List.cons (RequestType.MkRequest n_1 e_1 r l_1) reqs
+              | _ => OptionT.fail)]
+    fun size => aux_arb size size e_1 n_1 ns_1 l_1 rs_1
+-/
+#guard_msgs(info, drop warning) in
+#derive_generator (fun (reqs : List RequestType) => ActionToRequestTypes e n ns l rs reqs)
+
+/--
+info: Try this generator: instance :
+    ArbitrarySizedSuchThat (List RequestType) (fun reqs_1 => ActionSchemaEntryToRequestTypes e_1 ae_1 ls_1 reqs_1) where
+  arbitrarySizedST :=
+    let rec aux_arb (initSize : Nat) (size : Nat) (e_1 : EntityUID) (ae_1 : ActionSchemaEntry)
+      (ls_1 : List RequestType) : OptionT Plausible.Gen (List RequestType) :=
+      match size with
+      | Nat.zero =>
+        OptionTGen.backtrack
+          [(1,
+              match ae_1 with
+              | ActionSchemaEntry.MkActionSchemaEntry (List.cons p (List.nil)) rs c => do
+                let reqs_1 ←
+                  ArbitrarySizedSuchThat.arbitrarySizedST (fun reqs_1 => ActionToRequestTypes e_1 p rs c ls_1 reqs_1)
+                      initSize;
+                return reqs_1
+              | _ => OptionT.fail)]
+      | Nat.succ size' =>
+        OptionTGen.backtrack
+          [(1,
+              match ae_1 with
+              | ActionSchemaEntry.MkActionSchemaEntry (List.cons p (List.nil)) rs c => do
+                let reqs_1 ←
+                  ArbitrarySizedSuchThat.arbitrarySizedST (fun reqs_1 => ActionToRequestTypes e_1 p rs c ls_1 reqs_1)
+                      initSize;
+                return reqs_1
+              | _ => OptionT.fail),
+            (Nat.succ size',
+              match ae_1 with
+              | ActionSchemaEntry.MkActionSchemaEntry (List.cons p ps) rs c => do
+                let reqs' ←
+                  ArbitrarySizedSuchThat.arbitrarySizedST (fun reqs' => ActionToRequestTypes e_1 p rs c ls_1 reqs')
+                      initSize;
+                do
+                  let reqs_1 ← aux_arb initSize size' e_1 (ActionSchemaEntry.MkActionSchemaEntry ps rs c) reqs';
+                  return reqs_1
+              | _ => OptionT.fail)]
+    fun size => aux_arb size size e_1 ae_1 ls_1
+-/
+#guard_msgs(info, drop warning) in
+#derive_generator (fun (reqs : List RequestType) => ActionSchemaEntryToRequestTypes e ae ls reqs)
+
+/--
+info: Try this generator: instance : ArbitrarySizedSuchThat (List RequestType) (fun reqs_1 => ActionSchemaToRequestTypes acts_1 ls_1 reqs_1) where
+  arbitrarySizedST :=
+    let rec aux_arb (initSize : Nat) (size : Nat) (acts_1 : List (EntityUID × ActionSchemaEntry))
+      (ls_1 : List RequestType) : OptionT Plausible.Gen (List RequestType) :=
+      match size with
+      | Nat.zero =>
+        OptionTGen.backtrack
+          [(1,
+              match acts_1 with
+              | List.cons (Prod.mk uid a) (List.nil) => do
+                let reqs_1 ←
+                  ArbitrarySizedSuchThat.arbitrarySizedST
+                      (fun reqs_1 => ActionSchemaEntryToRequestTypes uid a ls_1 reqs_1) initSize;
+                return reqs_1
+              | _ => OptionT.fail)]
+      | Nat.succ size' =>
+        OptionTGen.backtrack
+          [(1,
+              match acts_1 with
+              | List.cons (Prod.mk uid a) (List.nil) => do
+                let reqs_1 ←
+                  ArbitrarySizedSuchThat.arbitrarySizedST
+                      (fun reqs_1 => ActionSchemaEntryToRequestTypes uid a ls_1 reqs_1) initSize;
+                return reqs_1
+              | _ => OptionT.fail),
+            (Nat.succ size',
+              match acts_1 with
+              | List.cons (Prod.mk uid a) ass => do
+                let reqs' ←
+                  ArbitrarySizedSuchThat.arbitrarySizedST
+                      (fun reqs' => ActionSchemaEntryToRequestTypes uid a ls_1 reqs') initSize;
+                do
+                  let reqs_1 ← aux_arb initSize size' ass reqs';
+                  return reqs_1
+              | _ => OptionT.fail)]
+    fun size => aux_arb size size acts_1 ls_1
+-/
+#guard_msgs(info, drop warning) in
+#derive_generator (fun (reqs : List RequestType) => ActionSchemaToRequestTypes acts ls reqs)
+
+/--
+info: Try this generator: instance : ArbitrarySizedSuchThat (List Environment) (fun es_1 => SchemaToEnvironments s_1 l_1 es_1) where
+  arbitrarySizedST :=
+    let rec aux_arb (initSize : Nat) (size : Nat) (s_1 : Schema) (l_1 : List RequestType) :
+      OptionT Plausible.Gen (List Environment) :=
+      match size with
+      | Nat.zero =>
+        OptionTGen.backtrack
+          [(1,
+              match l_1 with
+              | List.cons r (List.nil) => return List.cons (Environment.MkEnvironment s_1 r) (List.nil)
+              | _ => OptionT.fail)]
+      | Nat.succ size' =>
+        OptionTGen.backtrack
+          [(1,
+              match l_1 with
+              | List.cons r (List.nil) => return List.cons (Environment.MkEnvironment s_1 r) (List.nil)
+              | _ => OptionT.fail),
+            (Nat.succ size',
+              match l_1 with
+              | List.cons r rs => do
+                let envs ← aux_arb initSize size' s_1 rs;
+                return List.cons (Environment.MkEnvironment s_1 r) envs
+              | _ => OptionT.fail)]
+    fun size => aux_arb size size s_1 l_1
+-/
+#guard_msgs(info, drop warning) in
+#derive_generator (fun (es : List Environment) => SchemaToEnvironments s l es)
+
+---------------------------------------
+-- Checker & Generator for RecordTypes
+---------------------------------------
+/--
+info: Try this checker: instance : DecOpt (RecordType ct_1) where
+  decOpt :=
+    let rec aux_dec (initSize : Nat) (size : Nat) (ct_1 : CedarType) : Option Bool :=
+      match size with
+      | Nat.zero =>
+        DecOpt.checkerBacktrack
+          [fun _ =>
+            match ct_1 with
+            | CedarType.recordTypeNil => Option.some Bool.true
+            | _ => Option.some Bool.false,
+            fun _ =>
+            match ct_1 with
+            | CedarType.recordTypeCons fn o T1 T2 => Option.some Bool.true
+            | _ => Option.some Bool.false]
+      | Nat.succ size' =>
+        DecOpt.checkerBacktrack
+          [fun _ =>
+            match ct_1 with
+            | CedarType.recordTypeNil => Option.some Bool.true
+            | _ => Option.some Bool.false,
+            fun _ =>
+            match ct_1 with
+            | CedarType.recordTypeCons fn o T1 T2 => Option.some Bool.true
+            | _ => Option.some Bool.false,
+            ]
+    fun size => aux_dec size size ct_1
+-/
+#guard_msgs(info, drop warning) in
+#derive_checker (RecordType ct)
+
+--------------------
+-- Subtyping & Typing
+--------------------
+/--
+info: Try this checker: instance : DecOpt (SubType t1_1 t2_1) where
+  decOpt :=
+    let rec aux_dec (initSize : Nat) (size : Nat) (t1_1 : CedarType) (t2_1 : CedarType) : Option Bool :=
+      match size with
+      | Nat.zero =>
+        DecOpt.checkerBacktrack
+          [fun _ =>
+            match t2_1 with
+            | CedarType.boolType (BoolType.anyBool) =>
+              match t1_1 with
+              | CedarType.boolType B => Option.some Bool.true
+              | _ => Option.some Bool.false
+            | _ => Option.some Bool.false,
+            fun _ =>
+            match t2_1 with
+            | CedarType.recordTypeNil =>
+              match t1_1 with
+              | CedarType.recordTypeNil => Option.some Bool.true
+              | _ => Option.some Bool.false
+            | _ => Option.some Bool.false,
+            fun _ => DecOpt.decOpt (BEq.beq t1_1 t2_1) initSize]
+      | Nat.succ size' =>
+        DecOpt.checkerBacktrack
+          [fun _ =>
+            match t2_1 with
+            | CedarType.boolType (BoolType.anyBool) =>
+              match t1_1 with
+              | CedarType.boolType B => Option.some Bool.true
+              | _ => Option.some Bool.false
+            | _ => Option.some Bool.false,
+            fun _ =>
+            match t2_1 with
+            | CedarType.recordTypeNil =>
+              match t1_1 with
+              | CedarType.recordTypeNil => Option.some Bool.true
+              | _ => Option.some Bool.false
+            | _ => Option.some Bool.false,
+            fun _ => DecOpt.decOpt (BEq.beq t1_1 t2_1) initSize, fun _ =>
+            match t2_1 with
+            | CedarType.setType T2 =>
+              match t1_1 with
+              | CedarType.setType T1 => aux_dec initSize size' T1 T2
+              | _ => Option.some Bool.false
+            | _ => Option.some Bool.false,
+            fun _ =>
+            match t2_1 with
+            | CedarType.recordTypeCons u_2 u_3 T2 R2 =>
+              match t1_1 with
+              | CedarType.recordTypeCons A o T1 R1 =>
+                DecOpt.andOptList
+                  [DecOpt.decOpt (BEq.beq u_2 A) initSize,
+                    DecOpt.andOptList
+                      [DecOpt.decOpt (BEq.beq u_3 o) initSize,
+                        DecOpt.andOptList
+                          [DecOpt.decOpt (RecordType R2) initSize,
+                            DecOpt.andOptList
+                              [DecOpt.decOpt (RecordType R1) initSize,
+                                DecOpt.andOptList [aux_dec initSize size' T1 T2, aux_dec initSize size' R1 R2]]]]]
+              | _ => Option.some Bool.false
+            | _ => Option.some Bool.false]
+    fun size => aux_dec size size t1_1 t2_1
+-/
+#guard_msgs(info, drop warning) in
+#derive_checker (SubType t1 t2)
+
+/--
+info: Try this generator: instance : ArbitrarySizedSuchThat CedarType (fun t1_1 => SubType t1_1 t2_1) where
+  arbitrarySizedST :=
+    let rec aux_arb (initSize : Nat) (size : Nat) (t2_1 : CedarType) : OptionT Plausible.Gen CedarType :=
+      match size with
+      | Nat.zero =>
+        OptionTGen.backtrack
+          [(1,
+              match t2_1 with
+              | CedarType.boolType (BoolType.anyBool) => do
+                let B ← Plausible.Arbitrary.arbitrary;
+                return CedarType.boolType B
+              | _ => OptionT.fail),
+            (1,
+              match t2_1 with
+              | CedarType.recordTypeNil => return CedarType.recordTypeNil
+              | _ => OptionT.fail),
+            (1, return t2_1)]
+      | Nat.succ size' =>
+        OptionTGen.backtrack
+          [(1,
+              match t2_1 with
+              | CedarType.boolType (BoolType.anyBool) => do
+                let B ← Plausible.Arbitrary.arbitrary;
+                return CedarType.boolType B
+              | _ => OptionT.fail),
+            (1,
+              match t2_1 with
+              | CedarType.recordTypeNil => return CedarType.recordTypeNil
+              | _ => OptionT.fail),
+            (1, return t2_1),
+            (Nat.succ size',
+              match t2_1 with
+              | CedarType.setType T2 => do
+                let T1 ← aux_arb initSize size' T2;
+                return CedarType.setType T1
+              | _ => OptionT.fail),
+            (Nat.succ size',
+              match t2_1 with
+              | CedarType.recordTypeCons A o T2 R2 =>
+                match DecOpt.decOpt (RecordType R2) initSize with
+                | Option.some Bool.true => do
+                  let R1 ← ArbitrarySizedSuchThat.arbitrarySizedST (fun R1 => RecordType R1) initSize;
+                  match DecOpt.decOpt (SubType R1 R2) initSize with
+                    | Option.some Bool.true => do
+                      let T1 ← aux_arb initSize size' T2;
+                      return CedarType.recordTypeCons A o T1 R1
+                    | _ => OptionT.fail
+                | _ => OptionT.fail
+              | _ => OptionT.fail)]
+    fun size => aux_arb size size t2_1
+-/
+#guard_msgs(info, drop warning) in
+#derive_generator (fun (t1 : CedarType) => SubType t1 t2)
+
+/-- -/
+#guard_msgs(info, drop warning) in
+#derive_generator (fun (p : Prim) => HasTypePrim v p t)
+
+/-- -/
+#guard_msgs(info, drop warning) in
+#derive_generator (fun (t : CedarType) => HasTypeVar v x t)
+
+/-- -/
+#guard_msgs(info, drop warning) in
+#derive_generator (fun (x : Var) => HasTypeVar v x t)
+
+/-- -/
+#guard_msgs(info, drop warning) in
+#derive_checker (BindAttrType ns tef t)
+/-- -/
+#guard_msgs(info, drop warning) in
+#derive_generator (fun (tef : (CedarType × String × Bool)) => BindAttrType ns tef t)
+
+
+------------------------------------------------------------
+-- Generator for well-typed Cedar expressions
+------------------------------------------------------------
+/-- -/
+#guard_msgs(info, drop warning) in
+#derive_generator (fun (ex : (CedarExpr × PathSet)) => HasType a v ex t)
