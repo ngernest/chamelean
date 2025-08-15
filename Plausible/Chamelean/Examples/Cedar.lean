@@ -425,3 +425,58 @@ inductive GetEntityAttr : List (EntityName × EntitySchemaEntry) → (EntityName
     ¬(n = n1) →
     GetEntityAttr R (n, fn, b) T →
     GetEntityAttr ((n1, E)::R) (n, fn, b) T
+
+-- Environments
+
+@[nolint docBlame]
+inductive RequestType : Type where
+| MkRequest (prin : EntityName) (act : EntityUID) (res : EntityName) (ctxt : List (String × Bool × CedarType))
+deriving Repr, BEq
+
+/-- Converts a context description in RequestType to a Cedar record type -/
+inductive ReqContextToCedarType : List (String × Bool × CedarType) → CedarType → Prop where
+| RNil : ReqContextToCedarType [] CedarType.recordTypeNil
+| RCons : ∀ i B T R TR,
+    ReqContextToCedarType R TR →
+    ReqContextToCedarType ((i, B, T)::R) (CedarType.recordTypeCons i B T TR)
+
+@[nolint docBlame]
+inductive ActionToRequestTypes : EntityUID → EntityName → List EntityName → List (String × Bool × CedarType) → List RequestType → List RequestType → Prop where
+| ATRTSingle : ∀ uid p r c acc,
+    ActionToRequestTypes uid p [r] c acc ((RequestType.MkRequest p uid r c)::acc)
+| ATRTCons : ∀ uid p r rs c reqs acc,
+    ActionToRequestTypes uid p rs c acc reqs →
+    ActionToRequestTypes uid p (r::rs) c acc ((RequestType.MkRequest p uid r c)::reqs)
+
+@[nolint docBlame]
+inductive ActionSchemaEntryToRequestTypes : EntityUID → ActionSchemaEntry → List RequestType → List RequestType → Prop where
+| ASTRTSingle : ∀ uid p rs c reqs acc,
+    ActionToRequestTypes uid p rs c acc reqs →
+    ActionSchemaEntryToRequestTypes uid (ActionSchemaEntry.MkActionSchemaEntry [p] rs c) acc reqs
+| ASTRTCons : ∀ uid p ps rs c acc reqs reqs',
+    ActionToRequestTypes uid p rs c acc reqs' →
+    ActionSchemaEntryToRequestTypes uid (ActionSchemaEntry.MkActionSchemaEntry ps rs c) reqs' reqs →
+    ActionSchemaEntryToRequestTypes uid (ActionSchemaEntry.MkActionSchemaEntry (p::ps) rs c) acc reqs
+
+@[nolint docBlame]
+inductive ActionSchemaToRequestTypes : List (EntityUID × ActionSchemaEntry) → List RequestType → List RequestType → Prop where
+| ASTESingle : ∀ uid a acc reqs,
+    ActionSchemaEntryToRequestTypes uid a acc reqs →
+    ActionSchemaToRequestTypes [(uid, a)] acc reqs
+| ASTECons : ∀ uid a ass acc reqs' reqs,
+    ActionSchemaEntryToRequestTypes uid a acc reqs' →
+    ActionSchemaToRequestTypes ass reqs' reqs →
+    ActionSchemaToRequestTypes ((uid, a)::ass) acc reqs
+
+@[nolint docBlame]
+inductive Environment : Type where
+| MkEnvironment (schema : Schema) (reqType : RequestType)
+deriving Repr, BEq
+
+@[nolint docBlame]
+inductive SchemaToEnvironments : Schema → List RequestType → List Environment → Prop where
+| MkEnvsSingle : ∀ r s,
+    SchemaToEnvironments s [r] [(Environment.MkEnvironment s r)]
+| MkEnvsCons : ∀ r rs s envs,
+    SchemaToEnvironments s rs envs →
+    SchemaToEnvironments s (r::rs) ((Environment.MkEnvironment s r)::envs)
