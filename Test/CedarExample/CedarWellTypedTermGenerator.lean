@@ -7,6 +7,12 @@ open Plausible
 open OptionTGen
 
 
+/-!
+This file invokes the generator for well-typed Cedar terms, defined in `Test/CedarExample.CedarCheckerGenerators.lean`.
+
+Note: the structure of this file closely follows Mike Hicks's Coq formalization of Cedar (not publicly available).
+-/
+
 /-- Schema based on one of Cedar's sample apps -/
 def schema : Schema :=
   -- entity types

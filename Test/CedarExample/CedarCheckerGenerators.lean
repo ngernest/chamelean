@@ -8,6 +8,14 @@ import Plausible.Chamelean.DeriveConstrainedProducer
 
 open Plausible
 
+/-!
+This file contains snapshot tests for checkers & generators that
+are derived by Chamelean for the inductive relations defined in `Test/CedarExample.Cedar.lean`.
+
+Note: the structure of this file closely follows Mike Hicks's Coq formalization of Cedar (not publicly available),
+in particular the order in which he derives checkers/generators using QuickChick.
+-/
+
 -- Suppress warnings for unused variables in derived generators/checkers
 set_option linter.unusedVariables false
 

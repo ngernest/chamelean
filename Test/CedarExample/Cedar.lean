@@ -10,6 +10,11 @@ import Plausible.Chamelean.DeriveConstrainedProducer
 
 open Plausible
 
+/-!
+This file contains a Lean formalization of the Cedar policy language (OOPSLA '24),
+adapted from Mike Hicks's Coq formalization (not publicly available).
+-/
+
 ------------------------------------
 -- Part One: Cedar expression syntax
 -------------------------------------
