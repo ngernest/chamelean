@@ -44,4 +44,3 @@ import Plausible.Arbitrary
 import Plausible.Chamelean.Examples.ExampleInductiveRelations
 import Plausible.Chamelean.Examples.STLC
 import Plausible.Chamelean.Examples.Trees
-import Plausible.Chamelean.Examples.Cedar

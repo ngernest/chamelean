@@ -8,10 +8,6 @@ open DecOpt
 
 set_option guard_msgs.diff true
 
--- Dummy `ArbitrarySizedSuchThat` needed so that the derived generator compiles
-instance : ArbitrarySizedSuchThat Nat (fun m => m = n * n) where
-  arbitrarySizedST (_size : Nat) := return n * n
-
 /--
 info: Try this generator: instance : ArbitrarySizedSuchThat Nat (fun n_1 => square_of n_1 m_1) where
   arbitrarySizedST :=

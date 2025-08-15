@@ -16,3 +16,17 @@ class ArbitrarySuchThat (α : Type) (P : α → Prop) where
     using the `OptionTGen.sized` combinator -/
 instance [ArbitrarySizedSuchThat α P] : ArbitrarySuchThat α P where
   arbitraryST := OptionTGen.sized (ArbitrarySizedSuchThat.arbitrarySizedST P)
+
+/-- `ArbitrarySizedSuchThat` instance for equality propositions
+     where a variable `x` is left-equal to some value `val`.
+     (Note: `val` can be the result of a fully-applied function application,
+     which is typically how this typeclass is used!) -/
+instance {α : Type} [BEq α] {val : α} : ArbitrarySizedSuchThat α (fun x => x = val) where
+  arbitrarySizedST _ := return val
+
+/-- `ArbitrarySizedSuchThat` instance for equality propositions
+     where a variable `x` is right-equal to some value `val`.
+    (Note: `val` can be the result of a fully-applied function application,
+     which is typically how this typeclass is used!) -/
+instance {α : Type} [BEq α] {val : α} : ArbitrarySizedSuchThat α (fun x => val = x) where
+  arbitrarySizedST _ := return val
