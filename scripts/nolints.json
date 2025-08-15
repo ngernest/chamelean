@@ -135,5 +135,9 @@
   ["unusedArguments", "Plausible.RandT.down"],
   ["unusedArguments", "Plausible.NamedBinder"],
   ["unusedArguments", "Plausible.Decorations.DecorationsOf"],
-  ["unusedArguments", "instArbitrarySizedSuchThatListProdStringAddKV_1.aux_arb"]
+  ["unusedArguments", "instArbitrarySizedSuchThatListProdStringAddKV_1.aux_arb"],
+  ["unusedArguments", "instArbitrarySizedSuchThatEqOfBEq"],
+  ["unusedArguments", "instEnumSizedSuchThatEqOfBEq"],
+  ["unusedArguments", "instArbitrarySizedSuchThatEqOfBEq_1"],
+  ["unusedArguments", "instEnumSizedSuchThatEqOfBEq_1"]
 ]
