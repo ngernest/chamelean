@@ -395,7 +395,17 @@ def printNSamples {t : Type u} [Repr t] (g : Gen t) (n : Nat) : IO PUnit := do
     -- (and `RandT IO (List t)` isn't type-correct without
     -- https://github.com/leanprover/lean4/issues/3011), so go via an intermediate
     let xs : List Std.Format ← Plausible.runRand <| Rand.down <| do
-      let xs : List t ← (List.range n).mapM (ReaderT.run g ∘ ULift.up)
+      let xs : List t ← (List.range n).mapM (fun _ => ReaderT.run g (ULift.up 0))
+      pure <| ULift.up (xs.map repr)
+    for x in xs do
+      IO.println s!"{x}"
+
+/-- Prints at most `n` `size`-sized samples of a given type (produced by the generator `g`) to `stdout` for debugging -/
+def printNSizedSamples {t : Type u} [Repr t] (g : Gen t) (n : Nat) (size : Nat) : IO PUnit := do
+  letI : MonadLift Id IO := ⟨fun f => pure <| Id.run f⟩
+  do
+    let xs : List Std.Format ← Plausible.runRand <| Rand.down <| do
+      let xs : List t ← (List.range n).mapM (fun _ => ReaderT.run g (ULift.up size))
       pure <| ULift.up (xs.map repr)
     for x in xs do
       IO.println s!"{x}"
@@ -405,6 +415,13 @@ Print (at most) 10 samples of a given type to stdout for debugging.
 -/
 def printSamples {t : Type u} [Repr t] (g : Gen t) : IO PUnit := do
   printNSamples g 10
+
+/--
+Print (at most) 10 `size`-sized samples of a given type to stdout for debugging.
+-/
+def printSizedSamples {t : Type u} [Repr t] (g : Gen t) (size : Nat) : IO PUnit := do
+  printNSizedSamples g 10 size
+
 
 open Lean Meta Elab
 
