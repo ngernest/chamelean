@@ -1,9 +1,12 @@
 # Chamelean 
+> [!IMPORTANT]
+> This repo contains a research prototype. Please refer to the [Specimen repo](https://github.com/strata-org/specimen) for the latest version of this tool.
+
 Chamelean is an extension of Lean's Plausible property-based testing library which automatically derives
 generators, enumerators and checkers for inductive relations.
 
 Our design is heavily inspired by [Coq/Rocq's QuickChick](https://github.com/QuickChick/QuickChick) library and the following papers:
-- *Testing Theorems, Fully Automatically* (under submission, 2025)
+- *Testing Theorems, Fully Automatically* (OOPSLA 2026)
 - [*Computing Correctly with Inductive Relations* (PLDI 2022)](https://lemonidas.github.io/pdf/ComputingCorrectly.pdf)
 - [*Generating Good Generators for Inductive Relations* (POPL 2018)](https://lemonidas.github.io/pdf/GeneratingGoodGenerators.pdf)
 
